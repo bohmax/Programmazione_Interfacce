@@ -4,6 +4,8 @@ open LWC
 open System.Windows.Forms
 open System.Drawing
 
+let f = new Form(Text="MovingBox", TopMost=true)
+
 type Rettangolo() =
     inherit LWCControl()
     let mutable press : bool = false
@@ -25,13 +27,13 @@ type Rettangolo() =
             this.Invalidate() 
 
     override this.OnResize(e) =
-        this.ClientSize <- SizeF(float32(this.ClientSize.Width), float32(this.ClientSize.Height))
-        printfn "dfs"
+        this.ClientSize <- SizeF(float32(f.ClientSize.Width), float32(f.ClientSize.Height))
+
         this.Invalidate()
         base.OnResize e
 
 
-let f = new Form(Text="MovingBox", TopMost=true)
+
 
 let lwcc = new LWCContainer(Dock=DockStyle.Fill)
 let r = new Rettangolo(ClientSize=SizeF(float32(f.ClientSize.Width), float32(f.ClientSize.Height)))
