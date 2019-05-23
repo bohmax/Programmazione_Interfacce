@@ -31,7 +31,7 @@ type Rettangoli() =
                | [] -> -1
                | head :: tail -> 
                if not ( this.checkPickCorrelation head e.Location ) then 
-                trova tail index+1 
+                trova tail (index+1)
                else index
 
             ind <- (trova lista 0 )
@@ -40,20 +40,20 @@ type Rettangoli() =
                 this.Invalidate()
                 
     override this.OnMouseMove(e) =
+        //printfn "%A" ind
         if ind > -1 then
             let mutable nuovaLista = []
-            let indCount = 0
+            let mutable indCount = 0
             for i in lista do
                 if indCount <> ind then
                     nuovaLista <- List.append nuovaLista [ i ]
                 else    
-                    nuovaLista <- List.append nuovaLista [ new Rectangle(e.Location.X, e.Location.Y, 30, 30)]
-            printfn "%A" nuovaLista
+                    nuovaLista <- List.append nuovaLista [ new Rectangle(e.Location.X, e.Location.Y, 30, 30) ]
+                indCount <- indCount+1
+            //printfn "%A" nuovaLista
             lista <- []
             lista <- nuovaLista //replica??
-            
-            //for i in nuovaLista do
-               //lista <- List.append lista [ i ]
+            printfn "%A" nuovaLista.Length
 
             this.Invalidate()
 
