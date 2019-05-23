@@ -33,6 +33,8 @@ type Rettangolo() =
         base.OnResize e
 
 
+
+
 let lwcc = new LWCContainer(Dock=DockStyle.Fill)
 let r = new Rettangolo(ClientSize=SizeF(float32(f.ClientSize.Width), float32(f.ClientSize.Height)))
 lwcc.LWControls.Add(r)
