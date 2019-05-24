@@ -33,7 +33,7 @@ type RettEtichetta() =
       with get() = font
       and set(v) = font <- v
 
-    member this.AggArco
+    member this.Arco
         with get() = arco
         and set(v) = arco <- v
 
@@ -46,7 +46,7 @@ type Rettangoli() =
 
     let mutable lista = [ ]
     let mutable ind = new RettEtichetta() //elemento della lista da dover droppare
-    let mutable indMove = false 
+    let mutable stillclick = false
 
     override this.OnMouseDown(e) =
         let px = e.Location.X
@@ -57,35 +57,38 @@ type Rettangoli() =
             lista <- List.append lista [ etichetta ] //l'= va solo la prima volta che viene aggiunto l'elemento
             this.Invalidate()
         else
-            let rec trova (l:RettEtichetta list) index =  //trova se stiamo cliccando in uno dei rettangoli della lista
+            let rec trova (l:RettEtichetta list) =  //trova se stiamo cliccando in uno dei rettangoli della lista
                 match l with
                 | [] -> new RettEtichetta(Vuoto=true);
                 | head :: tail -> 
                 if not ( this.checkPickCorrelation head.Rett e.Location ) then 
-                    trova tail (index+1)
+                    trova tail
                 else head
 
-            if not(ind.Vuoto) then
-                let selected = (trova lista 0 ) 
-                if not(selected.Vuoto) && ind<>selected then  
-                    ind.AggArco <- List.append (ind.AggArco) [ selected ]
-            if ind.Vuoto then //aggiungo un nuovo rettangolo se non è presente in tale area
-               let etichetta = new RettEtichetta(Nomina="pippo")
-               etichetta.Rett <- new Rectangle(px,py,int(etichetta.AggFont.Size)*etichetta.Nomina.Length,int(etichetta.AggFont.Height))
-               lista <- List.append lista [ etichetta  ] 
-               this.Invalidate()
-            indMove <- false           
+            let selected = (trova lista )
+            if selected.Vuoto then //aggiungi un elemento
+                let etichetta = new RettEtichetta(Nomina="pippo")
+                etichetta.Rett <- new Rectangle(px,py,int(etichetta.AggFont.Size)*etichetta.Nomina.Length,int(etichetta.AggFont.Height))
+                lista <- List.append lista [ etichetta  ] 
+                this.Invalidate()
+                ind <- new RettEtichetta(Vuoto=true)
+            else if ind.Vuoto then //seleziona un elemento
+                ind <- selected
+            else if ind<>selected then //se è già selezionato aggiungerne un altro
+                ind.Arco <- List.append ind.Arco [ selected ] //assicurarsi che l'elemento non è già stato inserito precedentemente
+                this.Invalidate()
+            
+            stillclick <- true           
 
     override this.OnMouseMove(e) =
-        if not(ind.Vuoto) then //muove rettangolo
-            indMove <- true //quindi non dobbiamo collegarlo
-            ind.Rett <- new Rectangle(e.Location.X, e.Location.Y, ind.Rett.Width, ind.Rett.Height)
-            this.Invalidate()        
+        if not(ind.Vuoto) && stillclick then //muove rettangolo
+            ind.Rett <- new Rectangle(e.Location.X, e.Location.Y, ind.Rett.Width, ind.Rett.Height) //bug: si rischia di muovere impropriamente un quadrato, perchè?
+            this.Invalidate()
 
     override this.OnMouseUp(e) =
-        if indMove then //se è stato mosso non interessa sapere che deve essere collegato
-            ind <- new RettEtichetta(Vuoto=true)            
-        indMove <- false
+        //if stillclick then //se è stato mosso non interessa sapere che deve essere collegato
+        //    ind <- new RettEtichetta(Vuoto=true)
+        stillclick <- false
 
     override this.OnPaint(e) =
         let g = e.Graphics
@@ -95,6 +98,10 @@ type Rettangoli() =
             //printfn "%A" i.Rett
             g.FillRectangle(Brushes.Red, i.Rett )
             g.DrawString(i.Nomina, new Font("Arial", 12.f, FontStyle.Bold), Brushes.Green, PointF(float32(i.Rett.Location.X), float32(i.Rett.Location.Y)))
+            let iPosition = i.Rett.Location
+            for j in i.Arco do
+                let jPosition = j.Rett.Location
+                g.DrawLine(Pens.Black,iPosition.X,iPosition.Y,jPosition.X,jPosition.Y) //si può disegnare meglio, ti lascio questo compito a casa se saprai di questo commento so che almeno ci hai pensato
             //if i.Collega then
                 //if not(ind1.Vuoto) then
                   //  ind1 <- i
