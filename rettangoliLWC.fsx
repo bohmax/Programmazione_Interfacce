@@ -8,12 +8,13 @@ let f = new Form(Text="prova", TopMost=true)
 
 type Rettangoli() =
     inherit LWCControl()
+
+    //la parte commentata aggiunge un solo rettangolo ogni volta che si clicca sulla form
     //let mutable rett = new Rectangle(0, 0, 30, 30)
     //let mutable disegna = false
     
     let mutable lista = [ ]
     let mutable ind = -1 //posizione elemento della lista da dover droppare
-
 
     override this.OnMouseDown(e) =
         let px = e.Location.X
@@ -22,7 +23,7 @@ type Rettangoli() =
         //disegna <- true 
         //this.Invalidate() //si fa ogni volta che vogliamo mostrare una modifica, comporta il richiamo della OnPaint
 
-        if lista.IsEmpty then 
+        if lista.IsEmpty then //viene aggiunto il rettangolo per la prima volta
             lista <- List.append lista [ new Rectangle(px, py, 30, 30) ] //l'= va solo la prima volta che viene aggiunto l'elemento
             this.Invalidate()
         else
@@ -35,12 +36,11 @@ type Rettangoli() =
                else index
 
             ind <- (trova lista 0 )
-            if ind = -1 then //aggiungo un nuovo rettangolo
-                lista <- List.append lista [ new Rectangle(px, py, 30, 30) ] //l'= va solo la prima volta che viene aggiunto l'elemento
+            if ind = -1 then //aggiungo un nuovo rettangolo se non è presente in tale area
+                lista <- List.append lista [ new Rectangle(px, py, 30, 30) ] 
                 this.Invalidate()
                 
     override this.OnMouseMove(e) =
-        //printfn "%A" ind
         if ind > -1 then
             let mutable nuovaLista = []
             let mutable indCount = 0
@@ -50,10 +50,8 @@ type Rettangoli() =
                 else    
                     nuovaLista <- List.append nuovaLista [ new Rectangle(e.Location.X, e.Location.Y, 30, 30) ]
                 indCount <- indCount+1
-            //printfn "%A" nuovaLista
-            lista <- []
-            lista <- nuovaLista //replica??
-            printfn "%A" nuovaLista.Length
+            //lista <- []
+            lista <- nuovaLista 
 
             this.Invalidate()
 
@@ -62,13 +60,12 @@ type Rettangoli() =
 
     override this.OnPaint(e) =
         let g = e.Graphics
+
         //if disegna then
             //g.FillRectangle(Brushes.Red, rett)
 
-        //printfn "%A" lista
         for i in lista do 
             g.FillRectangle(Brushes.Red, i )
-
 
     override this.OnResize(e) =
         this.ClientSize <- SizeF(float32(f.ClientSize.Width), float32(f.ClientSize.Height))

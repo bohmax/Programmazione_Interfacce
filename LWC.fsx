@@ -100,9 +100,7 @@ type WVMatrix () =
 
   member this.ClientSizeInt with get() = Size(int sz.Width, int sz.Height)
 
-
   member this.Left = pos.X
-  
   member this.Top = pos.Y
 
   member this.Width = sz.Width
@@ -110,7 +108,6 @@ type WVMatrix () =
 
   member this.checkPickCorrelation (rett:Rectangle) (p:Point) = //pick correlation di un punto su un rettangolo
     if rett.Contains p then 
-        //printfn "dfds"
         true
     else false
 
@@ -125,6 +122,9 @@ type LWCContainer() as this =
       for i in e.NewItems do
         (i :?> LWCControl).Parent <- Some(this :> UserControl)
     )
+    this.SetStyle(ControlStyles.DoubleBuffer, true)
+    this.SetStyle(ControlStyles.AllPaintingInWmPaint, true)
+
 
   member this.LWControls with get() = controls
 
