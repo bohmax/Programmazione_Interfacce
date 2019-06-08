@@ -1,6 +1,5 @@
 #load "LWC.fsx"
 open LWC
-
 open System.Windows.Forms
 open System.Drawing
 
@@ -12,7 +11,7 @@ type RettEtichetta() =
     let mutable nome = ""
     let mutable font = new Font("Arial", 12.f)
 
-    let mutable arco = [] //corrisponde ad una lista di RettEtichetta
+    let mutable arco = [] //corrisponde ad una lista di RettEtichetta, per ogni rettangolo sappiamo a chi altro è connesso
     let mutable daCollegare = false
 
     //let mutable fd:RettEtichetta = new RettEtichetta();
@@ -44,7 +43,7 @@ type RettEtichetta() =
 type Rettangoli() =
     inherit LWCControl()
 
-    let mutable lista = [ ]
+    let mutable lista = []
     let mutable ind = new RettEtichetta() //elemento della lista da dover droppare
     let mutable stillclick = false
 
@@ -66,16 +65,22 @@ type Rettangoli() =
                 else head
 
             let selected = (trova lista )
-            if selected.Vuoto then //aggiungi un elemento
+            if selected.Vuoto then //aggiungi un rettangolo nuovo perché ho selezionato area vuota/nessun rettangolo già presente
                 let etichetta = new RettEtichetta(Nomina="pippo")
                 etichetta.Rett <- new Rectangle(px,py,int(etichetta.AggFont.Size)*etichetta.Nomina.Length,int(etichetta.AggFont.Height))
                 lista <- List.append lista [ etichetta  ] 
                 this.Invalidate()
                 ind <- new RettEtichetta(Vuoto=true)
-            else if ind.Vuoto then //seleziona un elemento
+            else if ind.Vuoto then //seleziona un rettangolo per la prima volta da spostare
+                ind <- selected //ind diventa il rettangolo che già esiste che vogliamo spostare
+            else if ind<>selected then //se è già selezionato aggiungerne arco
+                let mutable cnt=0
+                for i in ind.Arco do //aggiungiamo un arco per un nodo non ancora connesso
+                    if i = selected then
+                        cnt <- 1
+                if cnt = 0 then
+                    ind.Arco <- List.append ind.Arco [ selected ] //assicurarsi che l'elemento non è già stato inserito precedentemente
                 ind <- selected
-            else if ind<>selected then //se è già selezionato aggiungerne un altro
-                ind.Arco <- List.append ind.Arco [ selected ] //assicurarsi che l'elemento non è già stato inserito precedentemente
                 this.Invalidate()
             
             stillclick <- true           
@@ -95,29 +100,36 @@ type Rettangoli() =
         let mutable ind1 = new RettEtichetta()
         let mutable ind2 = new RettEtichetta()
         for i in lista do 
-            //printfn "%A" i.Rett
             g.FillRectangle(Brushes.Red, i.Rett )
             g.DrawString(i.Nomina, new Font("Arial", 12.f, FontStyle.Bold), Brushes.Green, PointF(float32(i.Rett.Location.X), float32(i.Rett.Location.Y)))
-            let iPosition = i.Rett.Location
+            let iLoc = i.Rett.Location
+            let iRett = i.Rett
             for j in i.Arco do
-                let jPosition = j.Rett.Location
-                g.DrawLine(Pens.Black,iPosition.X,iPosition.Y,jPosition.X,jPosition.Y) //si può disegnare meglio, ti lascio questo compito a casa se saprai di questo commento so che almeno ci hai pensato
-            //if i.Collega then
-                //if not(ind1.Vuoto) then
-                  //  ind1 <- i
-                //else
-                  //  if not(ind2.Vuoto) then
-                      //  ind2 <- i
-                    //else    
-                        //g.DrawLine(Pens.Black, Point(ind1.Rett.Width, ind1.Rett.Height), Point(ind2.Rett.Width, ind2.Rett.Height))
-                        //ind1 <- new RettEtichetta()
-                        //ind2 <- new RettEtichetta()
-                        //i.Collega <- false
+                let jLoc = j.Rett.Location
+                let jRett = j.Rett
+                let mutable diff = 0
+                if iLoc.Y>jLoc.Y then
+                    diff <- iLoc.Y - jLoc.Y
+                else
+                    diff <- jLoc.Y - iLoc.Y
+                if diff>=0 && diff<=iRett.Height then
+                    if iLoc.X > jLoc.X then //j sta a sx
+                        g.DrawLine(Pens.Black,iLoc.X,iLoc.Y+iRett.Height/2,jLoc.X+jRett.Width,jLoc.Y+iRett.Height/2) 
+                    else
+                        g.DrawLine(Pens.Black,iLoc.X+iRett.Width,iLoc.Y+iRett.Height/2,jLoc.X,jLoc.Y+iRett.Height/2) 
+                else
+                    if iLoc.Y < jLoc.Y then //j sta sotto
+                        g.DrawLine(Pens.Black,iLoc.X+iRett.Width/2,iLoc.Y+iRett.Height,jLoc.X+jRett.Width/2,jLoc.Y) 
+                    else //sta sopra
+                        g.DrawLine(Pens.Black,iLoc.X+iRett.Width/2,iLoc.Y,jLoc.X+jRett.Width/2,jLoc.Y+jRett.Height) 
+
+    override this.OnResize(e) =
+           this.ClientSize <- SizeF(float32(f.ClientSize.Width), float32(f.ClientSize.Height))
+           this.Invalidate()
+           base.OnResize e
 
 let lwcc = new LWCContainer(Dock=DockStyle.Fill)
 let r = new Rettangoli(ClientSize=SizeF(float32(f.ClientSize.Width), float32(f.ClientSize.Height)))
 lwcc.LWControls.Add(r)
-
 f.Controls.Add(lwcc)
-
 f.Show()
