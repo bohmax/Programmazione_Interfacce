@@ -40,11 +40,13 @@ type RettEtichetta() =
         with get() = selezionato
         and set(v) = selezionato <- v
 
+
+let mutable ind = new RettEtichetta(Vuoto=true) //elemento della lista da dover droppare
+let mutable lista = []
+
 type Rettangoli() =
     inherit LWCControl()
 
-    let mutable lista = []
-    let mutable ind = new RettEtichetta(Vuoto=true) //elemento della lista da dover droppare
     let mutable stillclick = false
 
     override this.OnMouseDown(e) =
@@ -133,8 +135,52 @@ type Rettangoli() =
            this.Invalidate()
            base.OnResize e
 
+type DeleteButton() = 
+    inherit LWCControl()
+
+    override this.OnMouseUp(e) =
+        if ind.Seleziona then
+            let mutable newLista = []
+            for i in lista do
+                if ind <> i then
+                    newLista <- List.append newLista [i]
+                    let mutable newArco = []
+                    for j in i.Arco do
+                        if ind <> j then
+                            newArco <- List.append newArco [j]
+                    i.Arco <- newArco
+            lista <- newLista
+            
+            ind <- new RettEtichetta(Vuoto=false) //così lo deseleziona soltanto
+        this.Invalidate()//è andato a richiamare anche l'invalidate di Rettangoli
+
+    override this.OnPaint(e) =
+        let g = e.Graphics
+        g.FillRectangle(Brushes.Black, new Rectangle(0,0,50,50))
+
+type NameButton() =
+    inherit LWCControl()
+
+    override this.OnMouseUp(e) =
+        //if ind.Seleziona then
+            //let textBox1 = new System.Windows.Forms.TextBox
+            //textBox1.AcceptsReturn = true
+        this.Invalidate()//è andato a richiamare anche l'invalidate di Rettangoli
+
+    override this.OnPaint(e) =
+        let g = e.Graphics
+        g.FillRectangle(Brushes.Aquamarine, new Rectangle(0,0,50,50))
+    
+            
+
 let lwcc = new LWCContainer(Dock=DockStyle.Fill)
-let r = new Rettangoli(Position=PointF(50.f, 0.f), ClientSize=SizeF(float32(f.ClientSize.Width), float32(f.ClientSize.Height)))
+let r = new Rettangoli(Position=PointF(50.f, 0.f),ClientSize=SizeF(float32(f.ClientSize.Width), float32(f.ClientSize.Height)))
 lwcc.LWControls.Add(r)
+
+let d = new DeleteButton(Position=PointF(0.f, 0.f),ClientSize=SizeF(float32(50.f), float32(50.f)))
+lwcc.LWControls.Add(d)
+let n = new NameButton(Position=PointF(0.f, 50.f),ClientSize=SizeF(float32(50.f), float32(50.f)))
+lwcc.LWControls.Add(n)
 f.Controls.Add(lwcc)
+
 f.Show()
