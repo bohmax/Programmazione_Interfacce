@@ -12,7 +12,7 @@ type RettEtichetta() =
     let mutable font = new Font("Arial", 12.f)
 
     let mutable arco = [] //corrisponde ad una lista di RettEtichetta, per ogni rettangolo sappiamo a chi altro è connesso
-    let mutable daCollegare = false
+    let mutable selezionato = false
 
     //let mutable fd:RettEtichetta = new RettEtichetta();
 
@@ -36,15 +36,15 @@ type RettEtichetta() =
         with get() = arco
         and set(v) = arco <- v
 
-    member this.Collega
-        with get() = daCollegare
-        and set(v) = daCollegare <- v
+    member this.Seleziona
+        with get() = selezionato
+        and set(v) = selezionato <- v
 
 type Rettangoli() =
     inherit LWCControl()
 
     let mutable lista = []
-    let mutable ind = new RettEtichetta() //elemento della lista da dover droppare
+    let mutable ind = new RettEtichetta(Vuoto=true) //elemento della lista da dover droppare
     let mutable stillclick = false
 
     override this.OnMouseDown(e) =
@@ -69,10 +69,9 @@ type Rettangoli() =
                 let etichetta = new RettEtichetta(Nomina="pippo")
                 etichetta.Rett <- new Rectangle(px,py,int(etichetta.AggFont.Size)*etichetta.Nomina.Length,int(etichetta.AggFont.Height))
                 lista <- List.append lista [ etichetta  ] 
-                this.Invalidate()
-                ind <- new RettEtichetta(Vuoto=true)
             else if ind.Vuoto then //seleziona un rettangolo per la prima volta da spostare
                 ind <- selected //ind diventa il rettangolo che già esiste che vogliamo spostare
+                ind.Seleziona <- true
             else if ind<>selected then //se è già selezionato aggiungerne arco
                 let mutable cnt=0
                 for i in ind.Arco do //aggiungiamo un arco per un nodo non ancora connesso
@@ -81,9 +80,13 @@ type Rettangoli() =
                 if cnt = 0 then
                     ind.Arco <- List.append ind.Arco [ selected ] //assicurarsi che l'elemento non è già stato inserito precedentemente
                 ind <- selected
-                this.Invalidate()
-            
+                ind.Seleziona <- true
+            else if ind = selected then   
+                ind.Seleziona <- not(ind.Seleziona)
+                if not(ind.Seleziona) then
+                    ind <- new RettEtichetta(Vuoto=true)
             stillclick <- true           
+            this.Invalidate()
 
     override this.OnMouseMove(e) =
         if not(ind.Vuoto) && stillclick then //muove rettangolo
@@ -97,8 +100,9 @@ type Rettangoli() =
 
     override this.OnPaint(e) =
         let g = e.Graphics
-        let mutable ind1 = new RettEtichetta()
-        let mutable ind2 = new RettEtichetta()
+        if ind.Seleziona then //seleziono rettangolo
+            g.DrawRectangle(Pens.Black, new Rectangle(ind.Rett.X-1, ind.Rett.Y-1, ind.Rett.Width+1, ind.Rett.Height+1))
+            //+,-1 perchè essendo fatta dopo la fillRectangle andava a coprire una parte del drawRectangle
         for i in lista do 
             g.FillRectangle(Brushes.Red, i.Rett )
             g.DrawString(i.Nomina, new Font("Arial", 12.f, FontStyle.Bold), Brushes.Green, PointF(float32(i.Rett.Location.X), float32(i.Rett.Location.Y)))
@@ -122,6 +126,7 @@ type Rettangoli() =
                         g.DrawLine(Pens.Black,iLoc.X+iRett.Width/2,iLoc.Y+iRett.Height,jLoc.X+jRett.Width/2,jLoc.Y) 
                     else //sta sopra
                         g.DrawLine(Pens.Black,iLoc.X+iRett.Width/2,iLoc.Y,jLoc.X+jRett.Width/2,jLoc.Y+jRett.Height) 
+
 
     override this.OnResize(e) =
            this.ClientSize <- SizeF(float32(f.ClientSize.Width), float32(f.ClientSize.Height))
