@@ -106,10 +106,11 @@ type WVMatrix () =
   member this.Width = sz.Width
   member this.Height = sz.Height
 
-  member this.checkPickCorrelation (rett:Rectangle) (p:Point) = //pick correlation di un punto su un rettangolo
+  member this.checkPickCorrelationRett (rett:Rectangle) (p:Point) = //pick correlation di un punto su un rettangolo
     if rett.Contains p then 
         true
     else false
+
 
 
 type LWCContainer() as this =
