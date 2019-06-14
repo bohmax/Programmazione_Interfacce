@@ -34,12 +34,11 @@ type RettEtichetta() =
 
 type ArchEtichetta() =
     let mutable nome = ""
-    let mutable font = new Font("Arial", 12.f)
+    let mutable font = new Font("Arial", 12.f, FontStyle.Bold)
     let mutable vuoto = false //l'elemento non è vuoto
     let mutable nodo1 = new RettEtichetta()
     let mutable nodo2 = new RettEtichetta()
     let mutable seleziona = false
-
 
     member this.Nomina
       with get() = nome
@@ -86,7 +85,6 @@ type ArchEtichetta() =
         with get() = seleziona
         and set(v) = seleziona <- v
 
-    
 let checkPickCorrelationRett (rett:Rectangle) (p:Point) = //pick correlation di un punto su un rettangolo
     if rett.Contains p then 
         true
@@ -144,6 +142,7 @@ let mutable listaRett = [] //lista oggetti RettEtichetta nell'Area
 let mutable listaArch = [] //lista oggetti ArchEtichetta nell'Area
 let mutable indRettSelected = new RettEtichetta(Vuoto=true) //elemento della listaRett da dover spostare/selezionare
 let mutable indArchSelected = new ArchEtichetta(Vuoto=true) //elemento della listaArch da dover spostare/selezionare
+let mutable LWCArea = new LWCControl()
 
 type Area() =
     inherit LWCControl()
@@ -162,13 +161,15 @@ type Area() =
             if selectedRett.Vuoto then 
                 let selectedArch = (trovaArch listaArch e.Location) //controllo se abbiamo selezionato un ArchEtichetta
                 if selectedArch.Vuoto then                
+                    indArchSelected.Seleziona <- false
+                    indArchSelected <- new ArchEtichetta(Vuoto=true) //garanzia ulteriore che lo abbiamo deselezionato
                     let rettNuovo = new RettEtichetta(Nomina="vuoto", Seleziona=true) //aggiungi un RettEtichetta perché ho selezionato area vuota/nessun RettEtichetta già presente
                     rettNuovo.Rett <- new Rectangle(e.Location.X,e.Location.Y,int(rettNuovo.AggFont.Size)*rettNuovo.Nomina.Length,int(rettNuovo.AggFont.Height))
                     listaRett <- List.append listaRett [ rettNuovo  ] 
                     indRettSelected <- rettNuovo
                 else 
+                    indRettSelected.Seleziona <- false
                     indRettSelected <- new RettEtichetta(Vuoto=true) //garanzia che selezioniamo al massimo un oggetto alla volta
-                    indArchSelected.Seleziona <- false
                     indArchSelected <- selectedArch //seleziona un ArchEtichetta per la prima volta 
                     indArchSelected.Seleziona <- true //diventa quello che già esiste                 
             else if indRettSelected.Vuoto then //seleziona un RettEtichetta per la prima volta 
@@ -213,6 +214,9 @@ type Area() =
         for j in listaArch do
             let (point1, point2) = j.Points
             g.DrawLine(Pens.Black, point1, point2)
+            let mezzoX = (point1.X+point2.X)/2.f
+            let mezzoY = (point1.Y+point2.Y)/2.f
+            g.DrawString(j.Nomina, j.AggFont, Brushes.Green, PointF(float32(mezzoX), float32(mezzoY)))
         if indArchSelected.Seleziona then //disegno selezione ArchEtichetta
             let (point1, point2) = indArchSelected.Points
             g.DrawLine(Pens.Blue, point1, point2)            
@@ -236,38 +240,173 @@ type DeleteButton() =
                 if not(i.Nodo1 = indRettSelected || i.Nodo2 = indRettSelected) then
                     newArco <- List.append newArco [i]
             listaArch <- newArco
-            listaRett <- newLista
-            
+            listaRett <- newLista            
             indRettSelected <- new RettEtichetta(Vuoto=true) 
+        if indArchSelected.Seleziona then
+            let mutable newArco = []
+            for i in listaArch do
+                if not(i = indArchSelected) then
+                    newArco <- List.append newArco [i]
+            listaArch <- newArco
+            indArchSelected <- new ArchEtichetta(Vuoto=true)
         this.Invalidate()
 
     override this.OnPaint(e) =
         let g = e.Graphics
-        g.FillRectangle(Brushes.Black, new Rectangle(0,0,50,50))
+        g.FillRectangle(Brushes.AliceBlue, new Rectangle(0,0,50,50))
+        g.DrawString("Delete", new Font("Arial", 8.f, FontStyle.Bold), Brushes.Green, PointF(0.f, 25.f))
 
 let textBox = new TextBox(Top=50, Left=0, Width=50)
 type NameButton() =
-    inherit LWCControl()
-        
+    inherit LWCControl() 
+    
     override this.OnMouseUp(e) =    
         if indRettSelected.Seleziona && textBox.Text.Length>0 then
-            indRettSelected.Nomina <- textBox.Text
+            indRettSelected.Nomina <- textBox.Text                              //il seguente viene usato per i nomi lunghi
             indRettSelected.Rett <- new Rectangle(indRettSelected.Rett.X,indRettSelected.Rett.Y,int(indRettSelected.AggFont.Size)*indRettSelected.Nomina.Length,int(indRettSelected.AggFont.Height))
-            indRettSelected.Rett <- new Rectangle(indRettSelected.Rett.X,indRettSelected.Rett.Y,int(indRettSelected.AggFont.Size)*indRettSelected.Nomina.Length,int(indRettSelected.AggFont.Height))
-            this.Invalidate() 
+        if indArchSelected.Seleziona && textBox.Text.Length>0 then
+            indArchSelected.Nomina <- textBox.Text
+        this.Invalidate() 
 
     override this.OnPaint(e) =
         let g = e.Graphics
         g.FillRectangle(Brushes.Aquamarine, new Rectangle(0,0,50,50))
-    
+        g.DrawString("Name", new Font("Arial", 8.f, FontStyle.Bold), Brushes.Green, PointF(0.f, 25.f))
+
+type ZommaAumentaButton() = 
+    inherit LWCControl()
+
+    override this.OnMouseUp(e) = 
+        LWCArea.WV.TranslateW(float32(LWCArea.ClientSize.Width/2.f), float32(LWCArea.ClientSize.Height/2.f))   //aggiusta le coordinate rispetto al centro della clientSize 
+        LWCArea.WV.ScaleW(2.f,2.f)
+        this.Invalidate()
+        LWCArea.WV.TranslateW(-float32(LWCArea.ClientSize.Width/2.f), -float32(LWCArea.ClientSize.Height/2.f)) //aggiusta le coordinate rispetto al centro della clientSize 
+        
+    override this.OnPaint(e) =
+        let g = e.Graphics
+        g.FillRectangle(Brushes.Yellow, new Rectangle(0,0,50,50))
+        g.DrawString("Zomma+", new Font("Arial", 8.f, FontStyle.Bold), Brushes.Green, PointF(0.f, 25.f))
+
+type ZommaDecrementaButton() = 
+    inherit LWCControl()
+
+    override this.OnMouseUp(e) = 
+        LWCArea.WV.TranslateW(float32(LWCArea.ClientSize.Width/2.f), float32(LWCArea.ClientSize.Height/2.f))
+        LWCArea.WV.ScaleW(float32(0.5),float32(0.5))
+        this.Invalidate()
+        LWCArea.WV.TranslateW(-float32(LWCArea.ClientSize.Width/2.f), -float32(LWCArea.ClientSize.Height/2.f))
+        
+    override this.OnPaint(e) =
+        let g = e.Graphics
+        g.FillRectangle(Brushes.Orange, new Rectangle(0,0,50,50))
+        g.DrawString("Zomma-", new Font("Arial", 8.f, FontStyle.Bold), Brushes.Green, PointF(0.f, 25.f))
+
+type RotateDestraButton() = 
+    inherit LWCControl()
+
+    override this.OnMouseUp(e) = 
+        LWCArea.WV.TranslateW(float32(LWCArea.ClientSize.Width/2.f), float32(LWCArea.ClientSize.Height/2.f))
+        LWCArea.WV.RotateW(45.f)
+        this.Invalidate()
+        LWCArea.WV.RotateW(-45.f) //aggiusta le coordinate rispetto all'angolo della clientSize
+        LWCArea.WV.TranslateW(-float32(LWCArea.ClientSize.Width/2.f), -float32(LWCArea.ClientSize.Height/2.f))
+        
+    override this.OnPaint(e) =
+        let g = e.Graphics
+        g.FillRectangle(Brushes.Blue, new Rectangle(0,0,50,50))
+        g.DrawString("RotateDX", new Font("Arial", 8.f, FontStyle.Bold), Brushes.Green, PointF(0.f, 25.f))
+
+
+type RotateSinistraButton() = 
+    inherit LWCControl()
+
+    override this.OnMouseUp(e) = 
+        LWCArea.WV.TranslateW(float32(LWCArea.ClientSize.Width/2.f), float32(LWCArea.ClientSize.Height/2.f))
+        LWCArea.WV.RotateW(-45.f)
+        this.Invalidate()
+        LWCArea.WV.RotateW(45.f)
+        LWCArea.WV.TranslateW(-float32(LWCArea.ClientSize.Width/2.f), -float32(LWCArea.ClientSize.Height/2.f))
+        
+    override this.OnPaint(e) =
+        let g = e.Graphics
+        g.FillRectangle(Brushes.Green, new Rectangle(0,0,50,50))
+        g.DrawString("RotateSX", new Font("Arial", 8.f, FontStyle.Bold), Brushes.Green, PointF(0.f, 25.f))
+
+type ScorriDestraButton() = 
+    inherit LWCControl()
+
+    override this.OnMouseUp(e) = 
+        LWCArea.WV.TranslateW(10.f, 0.f)
+        this.Invalidate()
+        
+    override this.OnPaint(e) =
+        let g = e.Graphics
+        g.FillRectangle(Brushes.Bisque, new Rectangle(0,0,50,50))
+        g.DrawString("ScorriDX", new Font("Arial", 8.f, FontStyle.Bold), Brushes.Green, PointF(0.f, 25.f))
+
+type ScorriSinistraButton() = 
+    inherit LWCControl()
+
+    override this.OnMouseUp(e) = 
+        LWCArea.WV.TranslateW(-10.f, 0.f)
+        this.Invalidate()
+        
+    override this.OnPaint(e) =
+        let g = e.Graphics
+        g.FillRectangle(Brushes.Chocolate, new Rectangle(0,0,50,50))
+        g.DrawString("ScorriSX", new Font("Arial", 8.f, FontStyle.Bold), Brushes.Green, PointF(0.f, 25.f))
+
+type ScorriAltoButton() = 
+    inherit LWCControl()
+
+    override this.OnMouseUp(e) = 
+        LWCArea.WV.TranslateW(0.f, -10.f)
+        this.Invalidate()
+        
+    override this.OnPaint(e) =
+        let g = e.Graphics
+        g.FillRectangle(Brushes.AliceBlue, new Rectangle(0,0,50,50))
+        g.DrawString("ScorriSu", new Font("Arial", 8.f, FontStyle.Bold), Brushes.Green, PointF(0.f, 25.f))
+
+type ScorriBassoButton() = 
+    inherit LWCControl()
+
+    override this.OnMouseUp(e) = 
+        LWCArea.WV.TranslateW(0.f, 10.f)
+        this.Invalidate()
+        
+    override this.OnPaint(e) =
+        let g = e.Graphics
+        g.FillRectangle(Brushes.AntiqueWhite, new Rectangle(0,0,50,50))
+        g.DrawString("ScorriGiù", new Font("Arial", 8.f, FontStyle.Bold), Brushes.Green, PointF(0.f, 25.f))
+
+ // -------------------------------- creazione container -------------------------------------------
 let lwcc = new LWCContainer(Dock=DockStyle.Fill)
 let r = new Area(Position=PointF(50.f, 0.f),ClientSize=SizeF(float32(f.ClientSize.Width), float32(f.ClientSize.Height)))
+LWCArea <- r
 lwcc.LWControls.Add(r)
-let d = new DeleteButton(Position=PointF(0.f, 0.f),ClientSize=SizeF(float32(50.f), float32(50.f)))
+let d = new DeleteButton(Position=PointF(0.f, 0.f),ClientSize=SizeF(50.f, 50.f))
 lwcc.LWControls.Add(d)
-let n = new NameButton(Position=PointF(0.f, 50.f),ClientSize=SizeF(float32(50.f), float32(50.f)))
+let n = new NameButton(Position=PointF(0.f, 50.f),ClientSize=SizeF(50.f , 50.f))
 lwcc.LWControls.Add(n)
 lwcc.Controls.Add(textBox)
+let zA = new ZommaAumentaButton(Position=PointF(0.f,100.f),ClientSize=SizeF(50.f, 50.f))
+lwcc.LWControls.Add(zA)
+let zD = new ZommaDecrementaButton(Position=PointF(0.f,150.f),ClientSize=SizeF(50.f, 50.f))
+lwcc.LWControls.Add(zD)
+let rD = new RotateDestraButton(Position=PointF(0.f,200.f),ClientSize=SizeF(50.f, 50.f))
+lwcc.LWControls.Add(rD)
+let rS = new RotateSinistraButton(Position=PointF(0.f,250.f),ClientSize=SizeF(50.f, 50.f))
+lwcc.LWControls.Add(rS)
+let sD = new ScorriDestraButton(Position=PointF(0.f,300.f),ClientSize=SizeF(50.f, 50.f))
+lwcc.LWControls.Add(sD)
+let sS = new ScorriSinistraButton(Position=PointF(0.f,350.f),ClientSize=SizeF(50.f, 50.f))
+lwcc.LWControls.Add(sS)
+let sA = new ScorriAltoButton(Position=PointF(0.f,400.f),ClientSize=SizeF(50.f, 50.f))
+lwcc.LWControls.Add(sA)
+let sB = new ScorriBassoButton(Position=PointF(0.f,450.f),ClientSize=SizeF(50.f, 50.f))
+lwcc.LWControls.Add(sB)
 
+//----------------------------------------------------------------------------------------------
 f.Controls.Add(lwcc)
 f.Show()
