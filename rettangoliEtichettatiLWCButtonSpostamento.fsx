@@ -11,6 +11,7 @@ type RettEtichetta() =
     let mutable vuoto = false //l'elemento non è vuoto
     let mutable rett = new Rectangle(0,0,10,10)
     let mutable seleziona = false
+    let mutable insieme = 0
 
     member this.Nomina
      with get() = nome
@@ -31,6 +32,10 @@ type RettEtichetta() =
     member this.Seleziona
         with get() = seleziona
         and set(v) = seleziona <- v
+
+    member this.Insieme
+        with get() = insieme
+        and set(v) = insieme <- v
 
 type ArchEtichetta() =
     let mutable nome = ""
@@ -138,6 +143,17 @@ let checkDoubleArch (l:ArchEtichetta list) (elemento: ArchEtichetta) = //control
             found <- 1
     found
 
+let classificaInsieme (l:RettEtichetta list) (insiemeMinimo: int) (insiemeDaMinimizzare: int) = 
+    for i in l do
+        if ( i.Insieme = insiemeDaMinimizzare ) then    
+            i.Insieme <- insiemeMinimo
+
+let lastElement (l:int list) = 
+    let mutable ultimo = 0
+    for i in l do
+        ultimo <- i
+    ultimo
+
 let mutable listaRett = [] //lista oggetti RettEtichetta nell'Area
 let mutable listaArch = [] //lista oggetti ArchEtichetta nell'Area
 let mutable indRettSelected = new RettEtichetta(Vuoto=true) //elemento della listaRett da dover spostare/selezionare
@@ -147,6 +163,8 @@ let mutable LWCArea = new LWCControl()
 let mutable contaRotate = 0 //perché il clipping funziona soltanto su coordinate normalizzate per cui per spostare a dx, sx su un oggetto obliquo 
     //la continua a spostare in obliquo e non a dx o sx
 
+let mutable listaInsiemiConnessi = [] //lista nodi tra loro connessi
+
 type Area() =
     inherit LWCControl()
 
@@ -154,9 +172,10 @@ type Area() =
     
     override this.OnMouseDown(e) =
         if listaRett.IsEmpty then //viene aggiunto RettEtichetta per la prima volta
-            let rettNuovo = new RettEtichetta(Nomina="vuoto", Seleziona=true)
+            let rettNuovo = new RettEtichetta(Nomina="vuoto", Seleziona=true, Insieme=1)
             rettNuovo.Rett <- new Rectangle(e.Location.X,e.Location.Y,int(rettNuovo.AggFont.Size)*rettNuovo.Nomina.Length,int(rettNuovo.AggFont.Height))
             listaRett <- List.append listaRett [ rettNuovo ] //l'= va solo la prima volta che viene aggiunto l'elemento
+            listaInsiemiConnessi <- List.append listaInsiemiConnessi [1]
             indRettSelected <- rettNuovo 
             this.Invalidate()
         else
@@ -166,9 +185,10 @@ type Area() =
                 if selectedArch.Vuoto then                
                     indArchSelected.Seleziona <- false
                     indArchSelected <- new ArchEtichetta(Vuoto=true) //garanzia ulteriore che lo abbiamo deselezionato
-                    let rettNuovo = new RettEtichetta(Nomina="vuoto", Seleziona=true) //aggiungi un RettEtichetta perché ho selezionato area vuota/nessun RettEtichetta già presente
+                    let rettNuovo = new RettEtichetta(Nomina="vuoto", Seleziona=true, Insieme= lastElement(listaInsiemiConnessi) + 1) //aggiungi un RettEtichetta perché ho selezionato area vuota/nessun RettEtichetta già presente
                     rettNuovo.Rett <- new Rectangle(e.Location.X,e.Location.Y,int(rettNuovo.AggFont.Size)*rettNuovo.Nomina.Length,int(rettNuovo.AggFont.Height))
                     listaRett <- List.append listaRett [ rettNuovo  ] 
+                    listaInsiemiConnessi <- List.append listaInsiemiConnessi [lastElement(listaInsiemiConnessi) + 1]
                     indRettSelected <- rettNuovo
                 else 
                     indRettSelected.Seleziona <- false
@@ -184,6 +204,10 @@ type Area() =
             else if indRettSelected<>selectedRett then //se è già selezionato un RettEtichetta aggiungerne arco
                 let elementoArco = new ArchEtichetta(Nomina="empty",Nodo1=indRettSelected, Nodo2=selectedRett)
                 if (checkDoubleArch listaArch elementoArco ) = 0 then
+                    if elementoArco.Nodo1.Insieme <> elementoArco.Nodo2.Insieme then
+                        let min = min elementoArco.Nodo1.Insieme elementoArco.Nodo2.Insieme
+                        let max = max elementoArco.Nodo1.Insieme elementoArco.Nodo2.Insieme
+                        classificaInsieme listaRett min max 
                     listaArch <- List.append listaArch [ elementoArco ]
                 indArchSelected.Seleziona <- false 
                 indArchSelected <- new ArchEtichetta(Vuoto=true)
@@ -199,7 +223,14 @@ type Area() =
 
     override this.OnMouseMove(e) =
         if not(indRettSelected.Vuoto) && stillclick then //muove RettEtichetta
-            indRettSelected.Rett <- new Rectangle(e.Location.X, e.Location.Y, indRettSelected.Rett.Width, indRettSelected.Rett.Height) 
+            let distanzaX = e.Location.X - indRettSelected.Rett.X
+            let distanzaY = e.Location.Y - indRettSelected.Rett.Y
+            printfn "%A %A" distanzaX distanzaY
+            for i in listaRett do
+                if i.Insieme = indRettSelected.Insieme then
+                    i.Rett <- new Rectangle(i.Rett.X+distanzaX, i.Rett.Y-distanzaY, indRettSelected.Rett.Width, indRettSelected.Rett.Height) 
+
+            //indRettSelected.Rett <- new Rectangle(e.Location.X, e.Location.Y, indRettSelected.Rett.Width, indRettSelected.Rett.Height) 
             this.Invalidate()
 
     override this.OnMouseUp(e) =
@@ -270,6 +301,7 @@ type NameButton() =
         if indRettSelected.Seleziona && textBox.Text.Length>0 then
             indRettSelected.Nomina <- textBox.Text                              //il seguente viene usato per i nomi lunghi
             indRettSelected.Rett <- new Rectangle(indRettSelected.Rett.X,indRettSelected.Rett.Y,int(indRettSelected.AggFont.Size)*indRettSelected.Nomina.Length,int(indRettSelected.AggFont.Height))
+            printfn "%A" indRettSelected.Insieme
         if indArchSelected.Seleziona && textBox.Text.Length>0 then
             indArchSelected.Nomina <- textBox.Text
         this.Invalidate() 
