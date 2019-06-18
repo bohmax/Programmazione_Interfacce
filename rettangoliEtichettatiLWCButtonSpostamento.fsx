@@ -165,6 +165,30 @@ let mutable contaRotate = 0 //perché il clipping funziona soltanto su coordinate
 
 let mutable listaInsiemiConnessi = [] //lista nodi tra loro connessi
 
+let trovaInsieme (lI:int list) (ins: int) =
+    let mutable result = false
+    for i in lI do
+        if i=ins then 
+            result <- true
+        else result <- result
+    result
+
+let aggiornaListaInsiemiConnessi (lR:RettEtichetta list) (lA:ArchEtichetta list) = //sono state aggiornate dopo l'eliminazione
+    let mutable contatore = 0
+    let mutable listaInsiemi = []
+    for i in lR do //i nodi hanno un contatore insieme tra loro diversi
+        contatore <- contatore + 1
+        i.Insieme <- contatore
+    for i in lA do
+        if i.Nodo1.Insieme <> i.Nodo2.Insieme then
+            let min = min i.Nodo1.Insieme i.Nodo2.Insieme
+            let max = max i.Nodo1.Insieme i.Nodo2.Insieme
+            classificaInsieme listaRett min max
+    for i in lR do //aggiorno listaInsiemiConnessi con i contatori nuovi
+        if not(trovaInsieme listaInsiemi i.Insieme) then
+            listaInsiemi <- List.append listaInsiemi [i.Insieme]
+    listaInsiemiConnessi <- listaInsiemi
+
 type Area() =
     inherit LWCControl()
 
@@ -225,14 +249,12 @@ type Area() =
         if not(indRettSelected.Vuoto) && stillclick then //muove RettEtichetta
             let distanzaX = e.Location.X - indRettSelected.Rett.X
             let distanzaY = e.Location.Y - indRettSelected.Rett.Y
-            printfn "duo %A %A" e.Location.Y indRettSelected.Rett.Y
-            printfn "%A %A" distanzaX distanzaY
             for i in listaRett do
                 if i.Insieme = indRettSelected.Insieme then
-                    if i <> indRettSelected then
+                    //if i <> indRettSelected then
                         i.Rett <- new Rectangle(i.Rett.X+distanzaX, i.Rett.Y+distanzaY, indRettSelected.Rett.Width, indRettSelected.Rett.Height)
-                    else //se lo faccio senza questo if si mette a flickerare se vuoi provalo, senno fidati
-                       indRettSelected.Rett <- new Rectangle(e.Location.X, e.Location.Y, indRettSelected.Rett.Width, indRettSelected.Rett.Height) 
+                    //else //se lo faccio senza questo if si mette a flickerare se vuoi provalo, senno fidati
+                       //indRettSelected.Rett <- new Rectangle(e.Location.X, e.Location.Y, indRettSelected.Rett.Width, indRettSelected.Rett.Height) 
             this.Invalidate()
 
     override this.OnMouseUp(e) =
@@ -260,6 +282,7 @@ type Area() =
             g.DrawLine(Pens.Blue, point1, point2)    
         LWCArea.WV.RotateW(float32 -contaRotate)
         e.Graphics.Transform <- LWCArea.WV.WV
+
     override this.OnResize(e) =
         this.ClientSize <- SizeF(float32(f.ClientSize.Width), float32(f.ClientSize.Height))
         this.Invalidate()
@@ -288,6 +311,7 @@ type DeleteButton() =
                     newArco <- List.append newArco [i]
             listaArch <- newArco
             indArchSelected <- new ArchEtichetta(Vuoto=true)
+        aggiornaListaInsiemiConnessi listaRett listaArch
         this.Invalidate()
 
     override this.OnPaint(e) =
@@ -303,7 +327,7 @@ type NameButton() =
         if indRettSelected.Seleziona && textBox.Text.Length>0 then
             indRettSelected.Nomina <- textBox.Text                              //il seguente viene usato per i nomi lunghi
             indRettSelected.Rett <- new Rectangle(indRettSelected.Rett.X,indRettSelected.Rett.Y,int(indRettSelected.AggFont.Size)*indRettSelected.Nomina.Length,int(indRettSelected.AggFont.Height))
-            printfn "%A" indRettSelected.Insieme
+            //printfn "%A" indRettSelected.Insieme //non sono presenti in ordine lessicografico, il numero non ha significato seantico, funge da nome
         if indArchSelected.Seleziona && textBox.Text.Length>0 then
             indArchSelected.Nomina <- textBox.Text
         this.Invalidate() 
@@ -366,6 +390,7 @@ type RotateSinistraButton() =
         g.FillRectangle(Brushes.Green, new Rectangle(0,0,50,50))
         g.DrawString("RotateSX", new Font("Arial", 8.f, FontStyle.Bold), Brushes.Green, PointF(0.f, 25.f))
 
+//vengono implementati anche con la scrollbar
 type ScorriDestraButton() = 
     inherit LWCControl()
 
@@ -414,11 +439,83 @@ type ScorriBassoButton() =
         g.FillRectangle(Brushes.AntiqueWhite, new Rectangle(0,0,50,50))
         g.DrawString("ScorriGiù", new Font("Arial", 8.f, FontStyle.Bold), Brushes.Green, PointF(0.f, 25.f))
 
+type ScrollBarX() =
+    inherit LWCControl()
+    let mutable rettOrizzontale = new Rectangle(0,0,20,20)
+    let mutable seleziona = false
+    let mutable lastX = 0.f
+
+    override this.OnMouseDown(e) =
+        if checkPickCorrelationRett rettOrizzontale e.Location then
+            seleziona <- true
+
+    override this.OnMouseMove(e) =
+        if seleziona && int(this.Width - 20.f) > e.Location.X then
+            rettOrizzontale <- new Rectangle(e.Location.X, 0, 20, 20)
+            let diff = float32 (float32 e.Location.X - lastX)
+            LWCArea.WV.TranslateW(diff,0.f)
+            lastX <- float32 e.Location.X
+            this.Invalidate()
+
+    override this.OnMouseUp(e) =
+        seleziona <- false
+
+    override this.OnPaint(e) =
+        let g = e.Graphics
+        g.FillRectangle(Brushes.Gray, 0.f, 0.f, this.Width, this.Height)
+        g.FillRectangle(Brushes.Black, rettOrizzontale)
+
+    override this.OnResize(e) =
+        this.ClientSize <- SizeF(float32 (f.ClientSize.Width-50-20), 20.f)
+        this.Position <- PointF(50.f, float32 (f.ClientSize.Height - 20))
+        this.Invalidate()
+        base.OnResize e
+
+
+type ScrollBarY() =
+    inherit LWCControl()
+    let mutable rettVerticale = new Rectangle(0,0,20,20)
+    let mutable seleziona = false
+    let mutable lastY = 0.f
+
+    override this.OnMouseDown(e) =
+        if checkPickCorrelationRett rettVerticale e.Location then
+            seleziona <- true
+
+    override this.OnMouseMove(e) =
+        if seleziona && int(this.Height - 20.f) > e.Location.Y then
+            //printfn "%A" e.Location.Y
+            rettVerticale <- new Rectangle(0, e.Location.Y, 20, 20)
+            let diff = float32 (float32 e.Location.Y - lastY)
+            LWCArea.WV.TranslateW(0.f, diff)
+            lastY <- float32 e.Location.Y
+            this.Invalidate()
+
+    override this.OnMouseUp(e) =
+        seleziona <- false
+
+    override this.OnPaint(e) =
+        let g = e.Graphics
+        g.FillRectangle(Brushes.Gray, 0.f, 0.f, this.Width, this.Height)
+        g.FillRectangle(Brushes.Black, rettVerticale)
+
+    override this.OnResize(e) =
+        this.ClientSize <- SizeF(20.f, float32 (f.ClientSize.Height-20))
+        this.Position <- PointF(float32 (f.ClientSize.Width-20), 0.f)
+        this.Invalidate()
+        base.OnResize e
+
  // -------------------------------- creazione container -------------------------------------------
 let lwcc = new LWCContainer(Dock=DockStyle.Fill)
 let r = new Area(Position=PointF(50.f, 0.f),ClientSize=SizeF(float32(f.ClientSize.Width), float32(f.ClientSize.Height)))
 LWCArea <- r
 lwcc.LWControls.Add(r)
+
+let xS = new ScrollBarX(Position=PointF(50.f, float32 (f.ClientSize.Height - 20)),ClientSize=SizeF(float32 (f.ClientSize.Width-50-20), 20.f))
+lwcc.LWControls.Add(xS)
+let yS = new ScrollBarY(Position=PointF(float32 (f.ClientSize.Width-20), 0.f),ClientSize=SizeF(20.f, float32 (f.ClientSize.Height-20)))
+lwcc.LWControls.Add(yS)
+
 let d = new DeleteButton(Position=PointF(0.f, 0.f),ClientSize=SizeF(50.f, 50.f))
 lwcc.LWControls.Add(d)
 let n = new NameButton(Position=PointF(0.f, 50.f),ClientSize=SizeF(50.f , 50.f))
@@ -440,7 +537,6 @@ let sA = new ScorriAltoButton(Position=PointF(0.f,400.f),ClientSize=SizeF(50.f, 
 lwcc.LWControls.Add(sA)
 let sB = new ScorriBassoButton(Position=PointF(0.f,450.f),ClientSize=SizeF(50.f, 50.f))
 lwcc.LWControls.Add(sB)
-
 //----------------------------------------------------------------------------------------------
 f.Controls.Add(lwcc)
 f.Show()
