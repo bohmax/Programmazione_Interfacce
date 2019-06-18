@@ -225,12 +225,14 @@ type Area() =
         if not(indRettSelected.Vuoto) && stillclick then //muove RettEtichetta
             let distanzaX = e.Location.X - indRettSelected.Rett.X
             let distanzaY = e.Location.Y - indRettSelected.Rett.Y
+            printfn "duo %A %A" e.Location.Y indRettSelected.Rett.Y
             printfn "%A %A" distanzaX distanzaY
             for i in listaRett do
                 if i.Insieme = indRettSelected.Insieme then
-                    i.Rett <- new Rectangle(i.Rett.X+distanzaX, i.Rett.Y-distanzaY, indRettSelected.Rett.Width, indRettSelected.Rett.Height) 
-
-            //indRettSelected.Rett <- new Rectangle(e.Location.X, e.Location.Y, indRettSelected.Rett.Width, indRettSelected.Rett.Height) 
+                    if i <> indRettSelected then
+                        i.Rett <- new Rectangle(i.Rett.X+distanzaX, i.Rett.Y+distanzaY, indRettSelected.Rett.Width, indRettSelected.Rett.Height)
+                    else //se lo faccio senza questo if si mette a flickerare se vuoi provalo, senno fidati
+                       indRettSelected.Rett <- new Rectangle(e.Location.X, e.Location.Y, indRettSelected.Rett.Width, indRettSelected.Rett.Height) 
             this.Invalidate()
 
     override this.OnMouseUp(e) =

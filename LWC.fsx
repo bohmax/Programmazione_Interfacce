@@ -169,6 +169,8 @@ type LWCContainer() as this =
     //c.OnMouseMove(evt)
 
   override this.OnPaint(e) =
+    let g = e.Graphics
+    g.SmoothingMode <- System.Drawing.Drawing2D.SmoothingMode.AntiAlias
     controls 
     |> Seq.iter(fun c ->
       let bkg = e.Graphics.Save()
@@ -185,7 +187,7 @@ type LWCContainer() as this =
 // Utente Libreria
 type LWButton() =
   inherit LWCControl()
-
+  
   override this.OnPaint(e) =
     let g = e.Graphics
     g.FillRectangle(Brushes.Red, 0.f, 0.f, this.Width, this.Height)
