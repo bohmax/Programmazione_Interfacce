@@ -3,7 +3,6 @@ open System.Drawing
 
 let f = new Form( Text="orologio", TopMost=true )
 let mutable tempo = System.DateTime.Now
-f.Show()
 
 type Circonferenza ( rectx, recty, larghezza, altezza) = 
     let mutable rx = rectx  //mutable si usa per indicare variabili non fisse
@@ -39,7 +38,7 @@ type clock() as this =
 
     override this.OnPaint e = 
         let g = e.Graphics
-        g.SmoothingMode <- Drawing2D.SmoothingMode.HighQuality //antialiasing: tutto disegnato in modo che l'effetto quadratato dei pixel appaia più lineare
+        g.SmoothingMode <- Drawing2D.SmoothingMode.HighQuality 
         this.SetStyle(ControlStyles.OptimizedDoubleBuffer, true)
 
         let cerchio = new Circonferenza(this.ClientSize.Width/2-50,this.ClientSize.Height/2-50, 100, 100)
@@ -70,7 +69,6 @@ type clock() as this =
         let minuti = tempo.Minute
         let secondi = tempo.Second
 
-        //printfn "%d" ora 
         coordinate.Rotate(float32(30*ora+minuti/2))
         g.Transform <- coordinate.WV //qui è importante perché prima di disegnare devi spostarti
         g.DrawLine(Pens.Black, 0, 0, 0, cerchio.RAGGIO)
@@ -96,15 +94,14 @@ type clock() as this =
         base.OnResize e
 
 
-let orologio = new clock(Dock=DockStyle.Fill) //Dock=DockStyle.Fill specifica la modalità di ancoraggio di un controllo, altrimenti non verrebbe posizionato al centro come specificato
+let orologio = new clock(Dock=DockStyle.Fill) 
 f.Controls.Add(orologio)
 
 let t = new Timer(Interval=950)
-
-//siccome la coda degli eventi non esegue tutto nell'immediato ma passa un po' di tempo prima che gestisca l'evento
-//dobbiamo dargli il tempo affinché lo possa fare
 t.Tick.Add( fun e ->
     tempo <- System.DateTime.Now
     orologio.Invalidate()
 )
 t.Start()
+
+f.Show()

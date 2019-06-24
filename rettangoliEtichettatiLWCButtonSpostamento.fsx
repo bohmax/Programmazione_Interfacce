@@ -264,8 +264,9 @@ type Area() =
 
     override this.OnPaint(e) =
         let g = e.Graphics
-        LWCArea.WV.RotateW(float32 contaRotate)
-        e.Graphics.Transform <- LWCArea.WV.WV
+        let t = g.Transform
+        g.Transform <- LWCArea.WV.WV
+
         for i in listaRett do 
             g.FillRectangle(Brushes.Red, i.Rett )
             g.DrawString(i.Nomina, new Font("Arial", 12.f, FontStyle.Bold), Brushes.Green, PointF(float32(i.Rett.Location.X), float32(i.Rett.Location.Y)))
@@ -280,11 +281,10 @@ type Area() =
         if indArchSelected.Seleziona then //disegno selezione ArchEtichetta
             let (point1, point2) = indArchSelected.Points
             g.DrawLine(Pens.Blue, point1, point2)    
-        LWCArea.WV.RotateW(float32 -contaRotate)
-        e.Graphics.Transform <- LWCArea.WV.WV
+        g.Transform <- t
 
     override this.OnResize(e) =
-        this.ClientSize <- SizeF(float32(f.ClientSize.Width), float32(f.ClientSize.Height))
+        this.ClientSize <- SizeF(float32(f.ClientSize.Width), float32(f.ClientSize.Height) + 1000.f)
         this.Invalidate()
         base.OnResize e
 
@@ -369,7 +369,8 @@ type RotateDestraButton() =
     inherit LWCControl()
 
     override this.OnMouseUp(e) = 
-        contaRotate <- (contaRotate+45)%360
+        contaRotate <- (contaRotate+1)%360
+        LWCArea.WV.RotateW(float32 contaRotate)
         this.Invalidate() //notifica al SistemaGrafico che stai modificando qualcosa, 
         
     override this.OnPaint(e) =
@@ -382,7 +383,8 @@ type RotateSinistraButton() =
     inherit LWCControl()
 
     override this.OnMouseUp(e) = 
-        contaRotate <- (contaRotate-45)%360
+        contaRotate <- (contaRotate-1)%360
+        LWCArea.WV.RotateV(float32 contaRotate)
         this.Invalidate()        
         
     override this.OnPaint(e) =
@@ -487,7 +489,9 @@ type ScrollBarY() =
             //printfn "%A" e.Location.Y
             rettVerticale <- new Rectangle(0, e.Location.Y, 20, 20)
             let diff = float32 (float32 e.Location.Y - lastY)
-            LWCArea.WV.TranslateW(0.f, diff)
+            //let cw = LWCArea.WV.TransformPointW(PointF(0.f,float32 -e.Location.Y))
+            //printfn "%A" cw
+            LWCArea.WV.TranslateV(0.f, diff)
             lastY <- float32 e.Location.Y
             this.Invalidate()
 
@@ -507,7 +511,7 @@ type ScrollBarY() =
 
  // -------------------------------- creazione container -------------------------------------------
 let lwcc = new LWCContainer(Dock=DockStyle.Fill)
-let r = new Area(Position=PointF(50.f, 0.f),ClientSize=SizeF(float32(f.ClientSize.Width), float32(f.ClientSize.Height)))
+let r = new Area(Position=PointF(50.f, -500.f),ClientSize=SizeF(float32(f.ClientSize.Width), float32(f.ClientSize.Height) + 1000.f))
 LWCArea <- r
 lwcc.LWControls.Add(r)
 
