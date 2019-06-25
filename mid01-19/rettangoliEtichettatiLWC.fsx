@@ -6,12 +6,12 @@ open System.Drawing
 let f = new Form(Text="prova", TopMost=true)
 
 type RettEtichetta() =
-    let mutable vuoto = false //l'elemento non Ë vuoto
+    let mutable vuoto = false //l'elemento non √® vuoto
     let mutable rett = new Rectangle(0,0,10,10)
     let mutable nome = ""
     let mutable font = new Font("Arial", 12.f)
 
-    let mutable arco = [] //corrisponde ad una lista di RettEtichetta, per ogni rettangolo sappiamo a chi altro Ë connesso
+    let mutable arco = [] //corrisponde ad una lista di RettEtichetta, per ogni rettangolo sappiamo a chi altro √® connesso
     let mutable selezionato = false
 
     //let mutable fd:RettEtichetta = new RettEtichetta();
@@ -65,20 +65,20 @@ type Rettangoli() =
                 else head
 
             let selected = (trova lista )
-            if selected.Vuoto then //aggiungi un rettangolo nuovo perchÈ ho selezionato area vuota/nessun rettangolo gi‡ presente
+            if selected.Vuoto then //aggiungi un rettangolo nuovo perch√© ho selezionato area vuota/nessun rettangolo gi√† presente
                 let etichetta = new RettEtichetta(Nomina="pippo")
                 etichetta.Rett <- new Rectangle(px,py,int(etichetta.AggFont.Size)*etichetta.Nomina.Length,int(etichetta.AggFont.Height))
                 lista <- List.append lista [ etichetta  ] 
             else if ind.Vuoto then //seleziona un rettangolo per la prima volta da spostare
-                ind <- selected //ind diventa il rettangolo che gi‡ esiste che vogliamo spostare
+                ind <- selected //ind diventa il rettangolo che gi√† esiste che vogliamo spostare
                 ind.Seleziona <- true
-            else if ind<>selected then //se Ë gi‡ selezionato aggiungerne arco
+            else if ind<>selected then //se √® gi√† selezionato aggiungerne arco
                 let mutable cnt=0
                 for i in ind.Arco do //aggiungiamo un arco per un nodo non ancora connesso
                     if i = selected then
                         cnt <- 1
                 if cnt = 0 then
-                    ind.Arco <- List.append ind.Arco [ selected ] //assicurarsi che l'elemento non Ë gi‡ stato inserito precedentemente
+                    ind.Arco <- List.append ind.Arco [ selected ] //assicurarsi che l'elemento non √® gi√† stato inserito precedentemente
                 ind <- selected
                 ind.Seleziona <- true
             else if ind = selected then   
@@ -90,11 +90,11 @@ type Rettangoli() =
 
     override this.OnMouseMove(e) =
         if not(ind.Vuoto) && stillclick then //muove rettangolo
-            ind.Rett <- new Rectangle(e.Location.X, e.Location.Y, ind.Rett.Width, ind.Rett.Height) //bug: si rischia di muovere impropriamente un quadrato, perchË?
+            ind.Rett <- new Rectangle(e.Location.X, e.Location.Y, ind.Rett.Width, ind.Rett.Height) //bug: si rischia di muovere impropriamente un quadrato, perch√®?
             this.Invalidate()
 
     override this.OnMouseUp(e) =
-        //if stillclick then //se Ë stato mosso non interessa sapere che deve essere collegato
+        //if stillclick then //se √® stato mosso non interessa sapere che deve essere collegato
         //    ind <- new RettEtichetta(Vuoto=true)
         stillclick <- false
 
@@ -102,7 +102,7 @@ type Rettangoli() =
         let g = e.Graphics
         if ind.Seleziona then //seleziono rettangolo
             g.DrawRectangle(Pens.Black, new Rectangle(ind.Rett.X-1, ind.Rett.Y-1, ind.Rett.Width+1, ind.Rett.Height+1))
-            //+,-1 perchË essendo fatta dopo la fillRectangle andava a coprire una parte del drawRectangle
+            //+,-1 perch√® essendo fatta dopo la fillRectangle andava a coprire una parte del drawRectangle
         for i in lista do 
             g.FillRectangle(Brushes.Red, i.Rett )
             g.DrawString(i.Nomina, new Font("Arial", 12.f, FontStyle.Bold), Brushes.Green, PointF(float32(i.Rett.Location.X), float32(i.Rett.Location.Y)))
