@@ -4,6 +4,9 @@ open System.Windows.Forms
 open System.Drawing
 
 let f = new Form(Text="prova", TopMost=true)
+f.Height <- 700
+f.Width <- 700
+f.BackColor <- Color.LightGray
     
 type RettEtichetta() =
     let mutable nome = ""
@@ -158,6 +161,7 @@ let mutable listaRett = [] //lista oggetti RettEtichetta nell'Area
 let mutable listaArch = [] //lista oggetti ArchEtichetta nell'Area
 let mutable indRettSelected = new RettEtichetta(Vuoto=true) //elemento della listaRett da dover spostare/selezionare
 let mutable indArchSelected = new ArchEtichetta(Vuoto=true) //elemento della listaArch da dover spostare/selezionare
+let mutable sposta = new PointF(0.f,0.f) //per sapere di quando fare la translate dopo la onpaint
 let mutable LWCArea = new LWCControl()
 
 let mutable contaRotate = 0 //perché il clipping funziona soltanto su coordinate normalizzate per cui per spostare a dx, sx su un oggetto obliquo 
@@ -264,8 +268,7 @@ type Area() =
 
     override this.OnPaint(e) =
         let g = e.Graphics
-        let t = g.Transform
-        g.Transform <- LWCArea.WV.WV
+        g.FillRectangle(Brushes.White, new Rectangle(0,0,int this.Width,int this.Height))
 
         for i in listaRett do 
             g.FillRectangle(Brushes.Red, i.Rett )
@@ -281,10 +284,12 @@ type Area() =
         if indArchSelected.Seleziona then //disegno selezione ArchEtichetta
             let (point1, point2) = indArchSelected.Points
             g.DrawLine(Pens.Blue, point1, point2)    
-        g.Transform <- t
+        //this.WV.TranslateW(-sposta.X,-sposta.Y)
+        //g.Transform <- this.WV.WV
+        //sposta <- PointF(0.f,0.f)
 
     override this.OnResize(e) =
-        this.ClientSize <- SizeF(float32(f.ClientSize.Width), float32(f.ClientSize.Height) + 1000.f)
+        this.ClientSize <- SizeF(float32(f.ClientSize.Width-150), float32(f.ClientSize.Height-100))
         this.Invalidate()
         base.OnResize e
 
@@ -340,11 +345,9 @@ type NameButton() =
 type ZommaAumentaButton() = 
     inherit LWCControl()
 
-    override this.OnMouseUp(e) = 
-        LWCArea.WV.TranslateW(float32(LWCArea.ClientSize.Width/2.f), float32(LWCArea.ClientSize.Height/2.f))   //aggiusta le coordinate rispetto al centro della clientSize 
-        LWCArea.WV.ScaleW(2.f,2.f)
+    override this.OnMouseUp(e) =
+        LWCArea.WV.ScaleW(1.f*float32 1.1,1.f*float32 1.1)
         this.Invalidate()
-        LWCArea.WV.TranslateW(-float32(LWCArea.ClientSize.Width/2.f), -float32(LWCArea.ClientSize.Height/2.f)) //aggiusta le coordinate rispetto al centro della clientSize 
         
     override this.OnPaint(e) =
         let g = e.Graphics
@@ -355,10 +358,8 @@ type ZommaDecrementaButton() =
     inherit LWCControl()
 
     override this.OnMouseUp(e) = 
-        LWCArea.WV.TranslateW(float32(LWCArea.ClientSize.Width/2.f), float32(LWCArea.ClientSize.Height/2.f))
-        LWCArea.WV.ScaleW(float32(0.5),float32(0.5))
+        LWCArea.WV.ScaleW(1.f/float32 1.1,1.f/float32 1.1)
         this.Invalidate()
-        LWCArea.WV.TranslateW(-float32(LWCArea.ClientSize.Width/2.f), -float32(LWCArea.ClientSize.Height/2.f))
         
     override this.OnPaint(e) =
         let g = e.Graphics
@@ -369,8 +370,10 @@ type RotateDestraButton() =
     inherit LWCControl()
 
     override this.OnMouseUp(e) = 
-        contaRotate <- (contaRotate+1)%360
+        LWCArea.WV.RotateW(float32 -contaRotate)
+        contaRotate <- (contaRotate-45)%360
         LWCArea.WV.RotateW(float32 contaRotate)
+        //sposta <- PointF(-LWCArea.Width/2.f, -LWCArea.Height/2.f)
         this.Invalidate() //notifica al SistemaGrafico che stai modificando qualcosa, 
         
     override this.OnPaint(e) =
@@ -382,9 +385,10 @@ type RotateDestraButton() =
 type RotateSinistraButton() = 
     inherit LWCControl()
 
-    override this.OnMouseUp(e) = 
-        contaRotate <- (contaRotate-1)%360
-        LWCArea.WV.RotateV(float32 contaRotate)
+    override this.OnMouseUp(e) =
+        LWCArea.WV.RotateW(float32 -contaRotate)
+        contaRotate <- (contaRotate+45)%360
+        LWCArea.WV.RotateW(float32 contaRotate)
         this.Invalidate()        
         
     override this.OnPaint(e) =
@@ -452,7 +456,7 @@ type ScrollBarX() =
             seleziona <- true
 
     override this.OnMouseMove(e) =
-        if seleziona && int(this.Width - 20.f) > e.Location.X then
+        if seleziona && e.Button.Equals(MouseButtons.Left) && int(this.Width - 20.f) > e.Location.X then
             rettOrizzontale <- new Rectangle(e.Location.X, 0, 20, 20)
             let diff = float32 (float32 e.Location.X - lastX)
             LWCArea.WV.TranslateW(diff,0.f)
@@ -473,7 +477,6 @@ type ScrollBarX() =
         this.Invalidate()
         base.OnResize e
 
-
 type ScrollBarY() =
     inherit LWCControl()
     let mutable rettVerticale = new Rectangle(0,0,20,20)
@@ -485,7 +488,7 @@ type ScrollBarY() =
             seleziona <- true
 
     override this.OnMouseMove(e) =
-        if seleziona && int(this.Height - 20.f) > e.Location.Y then
+        if seleziona && e.Button.Equals(MouseButtons.Left) && int(this.Height - 20.f) > e.Location.Y then
             //printfn "%A" e.Location.Y
             rettVerticale <- new Rectangle(0, e.Location.Y, 20, 20)
             let diff = float32 (float32 e.Location.Y - lastY)
@@ -509,9 +512,21 @@ type ScrollBarY() =
         this.Invalidate()
         base.OnResize e
 
+type Disegno() =
+    inherit LWCControl()
+        
+    override this.OnPaint(e) =
+        let g = e.Graphics
+        g.FillRectangle(Brushes.DimGray, 0.f, 0.f, this.Width, this.Height)
+        
+    override this.OnResize(e) =
+        this.Position <- PointF(float32 f.ClientSize.Width - 20.f, float32 f.ClientSize.Height - 20.f)
+        this.Invalidate()
+        base.OnResize e
+
  // -------------------------------- creazione container -------------------------------------------
 let lwcc = new LWCContainer(Dock=DockStyle.Fill)
-let r = new Area(Position=PointF(50.f, -500.f),ClientSize=SizeF(float32(f.ClientSize.Width), float32(f.ClientSize.Height) + 1000.f))
+let r = new Area(Position=PointF(100.f, 50.f),ClientSize=SizeF(float32(f.ClientSize.Width-150), float32(f.ClientSize.Height-100)))
 LWCArea <- r
 lwcc.LWControls.Add(r)
 
@@ -519,6 +534,8 @@ let xS = new ScrollBarX(Position=PointF(50.f, float32 (f.ClientSize.Height - 20)
 lwcc.LWControls.Add(xS)
 let yS = new ScrollBarY(Position=PointF(float32 (f.ClientSize.Width-20), 0.f),ClientSize=SizeF(20.f, float32 (f.ClientSize.Height-20)))
 lwcc.LWControls.Add(yS)
+let cO = new Disegno(Position=PointF(float32 f.ClientSize.Width, float32 f.ClientSize.Height - 20.f),ClientSize=SizeF(20.f, 20.f)) //sbarra tra le due scrollbar
+lwcc.LWControls.Add(cO)
 
 let d = new DeleteButton(Position=PointF(0.f, 0.f),ClientSize=SizeF(50.f, 50.f))
 lwcc.LWControls.Add(d)
@@ -541,6 +558,7 @@ let sA = new ScorriAltoButton(Position=PointF(0.f,400.f),ClientSize=SizeF(50.f, 
 lwcc.LWControls.Add(sA)
 let sB = new ScorriBassoButton(Position=PointF(0.f,450.f),ClientSize=SizeF(50.f, 50.f))
 lwcc.LWControls.Add(sB)
+
 //----------------------------------------------------------------------------------------------
 f.Controls.Add(lwcc)
 f.Show()

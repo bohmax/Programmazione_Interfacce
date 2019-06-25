@@ -57,7 +57,7 @@ type WVMatrix () = // Libreria
   let wv = WVMatrix()
   let mutable pos = PointF()
   let mutable sz = SizeF(120.f, 120.f)
-  let mutable parent : UserControl option = None
+  let mutable parent : Control option = None
 
   member this.WV = wv
   member this.Left = pos.X
@@ -122,7 +122,7 @@ type LWCContainer() as this =
   do 
     controls.CollectionChanged.Add(fun e ->
       for i in e.NewItems do
-        (i :?> LWCControl).Parent <- Some(this :> UserControl)
+        (i :?> LWCControl).Parent <- Some(this :> Control)
     )
     this.SetStyle(ControlStyles.DoubleBuffer, true)
     this.SetStyle(ControlStyles.AllPaintingInWmPaint, true)
@@ -180,7 +180,6 @@ type LWCContainer() as this =
       // esercizio: impostare il rettangolo in client space
       let evt = new PaintEventArgs(e.Graphics, Rectangle(c.PositionInt, c.ClientSizeInt))
       //bug: non supporta la rotazione
-      e.Graphics.SetClip(new RectangleF(c.Position, c.ClientSize))
       e.Graphics.Transform <- c.WV.WV
       c.OnPaint(evt)
       e.Graphics.Restore(bkg)
