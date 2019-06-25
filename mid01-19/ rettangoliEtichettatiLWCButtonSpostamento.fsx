@@ -11,7 +11,7 @@ f.BackColor <- Color.LightGray
 type RettEtichetta() =
     let mutable nome = ""
     let mutable font = new Font("Arial", 12.f)
-    let mutable vuoto = false //l'elemento non Ë vuoto
+    let mutable vuoto = false //l'elemento non √® vuoto
     let mutable rett = new Rectangle(0,0,10,10)
     let mutable seleziona = false
     let mutable insieme = 0
@@ -43,7 +43,7 @@ type RettEtichetta() =
 type ArchEtichetta() =
     let mutable nome = ""
     let mutable font = new Font("Arial", 12.f, FontStyle.Bold)
-    let mutable vuoto = false //l'elemento non Ë vuoto
+    let mutable vuoto = false //l'elemento non √® vuoto
     let mutable nodo1 = new RettEtichetta()
     let mutable nodo2 = new RettEtichetta()
     let mutable seleziona = false
@@ -139,7 +139,7 @@ let rec trovaArch (l:ArchEtichetta list) (e:Point) =  //trova se stiamo cliccand
         trovaArch tail e
     else head   
 
-let checkDoubleArch (l:ArchEtichetta list) (elemento: ArchEtichetta) = //controllo se c'Ë un arco duplicato
+let checkDoubleArch (l:ArchEtichetta list) (elemento: ArchEtichetta) = //controllo se c'√® un arco duplicato
     let mutable found:int = 0
     for i in l do
         if (i.Nodo1=elemento.Nodo1 && i.Nodo2=elemento.Nodo2) || (i.Nodo2=elemento.Nodo1 && i.Nodo1=elemento.Nodo2) then
@@ -164,7 +164,7 @@ let mutable indArchSelected = new ArchEtichetta(Vuoto=true) //elemento della lis
 let mutable sposta = new PointF(0.f,0.f) //per sapere di quando fare la translate dopo la onpaint
 let mutable LWCArea = new LWCControl()
 
-let mutable contaRotate = 0 //perchÈ il clipping funziona soltanto su coordinate normalizzate per cui per spostare a dx, sx su un oggetto obliquo 
+let mutable contaRotate = 0 //perch√© il clipping funziona soltanto su coordinate normalizzate per cui per spostare a dx, sx su un oggetto obliquo 
     //la continua a spostare in obliquo e non a dx o sx
 
 let mutable listaInsiemiConnessi = [] //lista nodi tra loro connessi
@@ -213,7 +213,7 @@ type Area() =
                 if selectedArch.Vuoto then                
                     indArchSelected.Seleziona <- false
                     indArchSelected <- new ArchEtichetta(Vuoto=true) //garanzia ulteriore che lo abbiamo deselezionato
-                    let rettNuovo = new RettEtichetta(Nomina="vuoto", Seleziona=true, Insieme= lastElement(listaInsiemiConnessi) + 1) //aggiungi un RettEtichetta perchÈ ho selezionato area vuota/nessun RettEtichetta gi‡ presente
+                    let rettNuovo = new RettEtichetta(Nomina="vuoto", Seleziona=true, Insieme= lastElement(listaInsiemiConnessi) + 1) //aggiungi un RettEtichetta perch√© ho selezionato area vuota/nessun RettEtichetta gi√† presente
                     rettNuovo.Rett <- new Rectangle(e.Location.X,e.Location.Y,int(rettNuovo.AggFont.Size)*rettNuovo.Nomina.Length,int(rettNuovo.AggFont.Height))
                     listaRett <- List.append listaRett [ rettNuovo  ] 
                     listaInsiemiConnessi <- List.append listaInsiemiConnessi [lastElement(listaInsiemiConnessi) + 1]
@@ -222,14 +222,14 @@ type Area() =
                     indRettSelected.Seleziona <- false
                     indRettSelected <- new RettEtichetta(Vuoto=true) //garanzia che selezioniamo al massimo un oggetto alla volta
                     indArchSelected <- selectedArch //seleziona un ArchEtichetta per la prima volta 
-                    indArchSelected.Seleziona <- true //diventa quello che gi‡ esiste                 
+                    indArchSelected.Seleziona <- true //diventa quello che gi√† esiste                 
             else if indRettSelected.Vuoto then //seleziona un RettEtichetta per la prima volta 
                 indArchSelected.Seleziona <- false //deseleziono quello precedentemente selezionato
                 indArchSelected <- new ArchEtichetta(Vuoto=true) //garanzia che selezioniamo al massimo un oggetto alla volta                 
                 indRettSelected.Seleziona <- false
-                indRettSelected <- selectedRett //diventa quello che gi‡ esiste
+                indRettSelected <- selectedRett //diventa quello che gi√† esiste
                 indRettSelected.Seleziona <- true
-            else if indRettSelected<>selectedRett then //se Ë gi‡ selezionato un RettEtichetta aggiungerne arco
+            else if indRettSelected<>selectedRett then //se √® gi√† selezionato un RettEtichetta aggiungerne arco
                 let elementoArco = new ArchEtichetta(Nomina="empty",Nodo1=indRettSelected, Nodo2=selectedRett)
                 if (checkDoubleArch listaArch elementoArco ) = 0 then
                     if elementoArco.Nodo1.Insieme <> elementoArco.Nodo2.Insieme then
@@ -262,7 +262,7 @@ type Area() =
             this.Invalidate()
 
     override this.OnMouseUp(e) =
-        //if stillclick then //se Ë stato mosso non interessa sapere che deve essere collegato
+        //if stillclick then //se √® stato mosso non interessa sapere che deve essere collegato
         //    indRettSelected <- new RettEtichetta(Vuoto=true)
         stillclick <- false
 
@@ -443,7 +443,7 @@ type ScorriBassoButton() =
     override this.OnPaint(e) =
         let g = e.Graphics
         g.FillRectangle(Brushes.AntiqueWhite, new Rectangle(0,0,50,50))
-        g.DrawString("ScorriGi˘", new Font("Arial", 8.f, FontStyle.Bold), Brushes.Green, PointF(0.f, 25.f))
+        g.DrawString("ScorriGi√π", new Font("Arial", 8.f, FontStyle.Bold), Brushes.Green, PointF(0.f, 25.f))
 
 type ScrollBarX() =
     inherit LWCControl()
