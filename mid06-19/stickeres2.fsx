@@ -7,13 +7,19 @@ type Sticker() =
     inherit LWCControl()
 
     let mutable rettangolo = new Rectangle(-1,-1,0,0)
+    let mutable ruota = 0.f
+    let mutable ruotaprec = 0.f
     let mutable testo = ""
     let mutable font = new Font("Arial", 12.f, FontStyle.Bold)
     let mutable image = []
+    let mutable selezionato = false
     
     member this.Rettangolo 
         with get() = rettangolo
         and set(v) = rettangolo <- v
+    member this.Ruota
+        with get() = ruota
+        and set(v) = ruota <- v
     member this.Testo 
         with get() = testo
         and set(v) = testo <- v
@@ -23,15 +29,38 @@ type Sticker() =
     member this.Image 
         with get() = image
         and set(v) = image <- v
+    member this.Selezionato
+        with get() = selezionato
+        and set(v) = selezionato <- v
 
-    member this.OnPaint(g:Graphics) = 
+    override this.OnPaint(e) = 
         let mutable count = 0
+        let g = e.Graphics
+
+        //printfn "%A" (abs ruota * this.Width/2.f)
+        if (ruota <> 0.f) then
+            this.WV.TranslateW(this.Width/2.f,this.Height/2.f)
+            this.WV.RotateW(ruota)
+            this.WV.TranslateW(-this.Width/2.f,-this.Height/2.f)
+
+        let div = abs (int (ruota / 90.f))
+        match div with
+        | 1 | 3 -> rettangolo <- new Rectangle((int this.Position.X - 15), (int this.Position.Y + 15),130,100)
+        | _ -> rettangolo <- new Rectangle(int this.Position.X,int this.Position.Y,100,130)
+
+        g.Transform <- this.WV.WV
+
+        let rect = new Rectangle(Point(0,0),Size(100,130))
+        g.FillRectangle(Brushes.YellowGreen, rect)
+        if selezionato then
+            g.DrawRectangle(Pens.Black, rect)
+
         for i in image do
-            g.DrawImage(i, new Rectangle(rettangolo.X+5,rettangolo.Y+30*count+5,rettangolo.Width-10,30))
+            g.DrawImage(i, new Rectangle(5,30*count+5,100-10,30))
             count <- count + 1
         let mutable dimTesto = testo.Length
         let mutable posStringa = 0
-        let mutable contaAltezza = rettangolo.Y + 30*count + 5
+        let mutable contaAltezza = 30*count + 5
         let mutable todraw = testo
 
         let mutable size = TextRenderer.MeasureText(testo, font); //studio la dimensione del testo in anticipo
@@ -44,15 +73,16 @@ type Sticker() =
                 numlettere <- numlettere + 1
 
             todraw <- testo.Substring( posStringa , numlettere)
-            g.DrawString(todraw,font, Brushes.Black, PointF(float32(rettangolo.X-2), float32(contaAltezza)))
+            g.DrawString(todraw,font, Brushes.Black, PointF(float32(-2.f), float32(contaAltezza)))
             size <- TextRenderer.MeasureText(todraw,font)
             contaAltezza <- contaAltezza + size.Height
             posStringa <- posStringa + numlettere
+        if (ruota <> 0.f) then
+            this.WV.TranslateW(this.Width/2.f,this.Height/2.f)
+            this.WV.RotateW(-ruota)
+            this.WV.TranslateW(-this.Width/2.f,-this.Height/2.f)
  
-        
-
 //------------------------------------funzioni di utilita----------------------------------
-
 let checkPickCorrelationRett (rett:Rectangle) (p:Point) = //pick correlation di un punto su un rettangolo
     if rett.Contains p then 
         true
@@ -62,7 +92,7 @@ let rec trovaSticker (l:Sticker list) (e:Point) =  //trova se stiamo cliccando i
     match l with
     | [] -> new Sticker()
     | head :: tail -> 
-    if not ( checkPickCorrelationRett head.Rettangolo e ) then 
+    if not ( checkPickCorrelationRett head.Rettangolo e) then 
         trovaSticker tail e
     else head
 //-----------------------------------------------------------------------------------------
@@ -70,6 +100,7 @@ let rec trovaSticker (l:Sticker list) (e:Point) =  //trova se stiamo cliccando i
 let mutable listaSticker = [] //indica una lista degli sticker
 let mutable selectedSticker = new Sticker()
 let mutable lastMousePosition = Point(-1,-1)
+let mutable contaRotate = 0 //indica di quanto ha ruotato il mondo fino a questo momento
 
 type Area() =
     inherit LWCContainer()
@@ -84,50 +115,51 @@ type Area() =
         let evt = new MouseEventArgs(e.Button, e.Clicks, int p.X, int p.Y, e.Delta)
         let risultatoricerca = trovaSticker listaSticker evt.Location
         if risultatoricerca.Rettangolo.Height = 0 then //aggiungi nuovo sticker
-            let st = new Sticker(Rettangolo = new Rectangle(evt.Location.X,evt.Location.Y,100,130))
+            selectedSticker.Selezionato <- false
+            let st = new Sticker(Position=PointF(float32 evt.Location.X,float32 evt.Location.Y), ClientSize=SizeF(100.f,130.f),Rettangolo = new Rectangle(evt.Location.X,evt.Location.Y,100,130))
             listaSticker <- List.append [ st ] listaSticker
+            this.LWControls.Add(st)
             selectedSticker <- st
+            selectedSticker.Selezionato <- true
         else //seleziona lo steaker cliccato
+            selectedSticker.Selezionato <- false
             selectedSticker <- risultatoricerca
-            listaSticker <- List.append [selectedSticker] listaSticker //in modo da avere l'elemento selezionato in cima alla lista
-            listaSticker <- List.distinct listaSticker //elimino il duplicato dopo l'inserimento
-        lastMousePosition <- Point( evt.X - selectedSticker.Rettangolo.X, evt.Y - selectedSticker.Rettangolo.Y)
+            //listaSticker <- List.append [selectedSticker] listaSticker //in modo da avere l'elemento selezionato in cima alla lista
+            //listaSticker <- List.distinct listaSticker //elimino il duplicato dopo l'inserimento
+            let idx = this.LWControls.IndexOf(selectedSticker)
+            this.LWControls.Move(idx,this.LWControls.Count-1)
+            selectedSticker.Selezionato <- true
+        lastMousePosition <- Point( evt.X - int selectedSticker.Position.X, evt.Y - int selectedSticker.Position.Y)
         this.Invalidate()                
     
     override this.OnMouseMove(e)  =  
         if selectedSticker.Rettangolo.Height <> 0 && e.Button.Equals(MouseButtons.Left) then
             let p = wv.TransformPointV(PointF(single e.X, single e.Y))
             let evt = new MouseEventArgs(e.Button, e.Clicks, int p.X, int p.Y, e.Delta)
-            selectedSticker.Rettangolo <- new Rectangle(evt.X - lastMousePosition.X,evt.Y - lastMousePosition.Y, 100, 130)
+
+            selectedSticker.Position <- new PointF(float32(evt.X - lastMousePosition.X),float32(evt.Y - lastMousePosition.Y))
+            selectedSticker.Rettangolo <- new Rectangle(int selectedSticker.Position.X,int selectedSticker.Position.Y,selectedSticker.Rettangolo.Width,selectedSticker.Rettangolo.Height)
             this.Invalidate()
 
-    //override this.OnMouseUp(e) =
-
-    override this.OnPaint(e) =
+    override this.PaintSupport(e) =
         let g = e.Graphics
         let bkg = e.Graphics.Save()
-        let vx = wv.TransformPointV(PointF(0.f,0.f))
-        
+
         g.FillRectangle(Brushes.White, new Rectangle(Point(0,0),Size(this.Width,this.Height)))
 
         g.Transform <- wv.WV
 
-        for i in listaSticker do
-            if selectedSticker <> i then
-                g.FillRectangle(Brushes.YellowGreen, i.Rettangolo)
-                i.OnPaint(g)
-        if selectedSticker.Rettangolo.Height <> 0 then
-            g.FillRectangle(Brushes.YellowGreen, selectedSticker.Rettangolo)
-            g.DrawRectangle(Pens.Black, selectedSticker.Rettangolo)
-            selectedSticker.OnPaint g
-        g.Restore(bkg)
+        wv, bkg
+
+    override this.OnResize(e) =
+        base.OnResize e
+        this.Invalidate()
 
 let mutable LWCArea = new Area() //per riferire l'area di disegno
 
 type Buttons() =
     inherit LWCControl()
 
-    let mutable contaRotate = 0 //indica di quanto ha ruotato il mondo fino a questo momento
     let sposta = 30.f //usato per indicare di quanto fare la translate
 
     let bottoni = [| new Rectangle(0,0,25,25); new Rectangle(25+5,0,25,25); new Rectangle(25*2+5*2,0,25,25); new Rectangle(25*3+5*3,0,25,25); new Rectangle(25*4+5*4,0,25,25); new Rectangle(25*5+5*5,0,25,25); new Rectangle(25*6+5*6,0,25,25); new Rectangle(25*7+5*7,0,25,25) |]
@@ -148,8 +180,8 @@ type Buttons() =
                 | 3 -> printfn "↓"; LWCArea.WV.TranslateV(0.f, -sposta)
                 | 4 -> printfn "+"; LWCArea.WV.ScaleV(1.f/float32 1.1,1.f/float32 1.1)
                 | 5 -> printfn "-"; LWCArea.WV.ScaleV(1.f*float32 1.1,1.f*float32 1.1)
-                | 6 -> printfn "⟲"; LWCArea.WV.RotateV(float32 -contaRotate); contaRotate <- (contaRotate-45)%360; LWCArea.WV.RotateV(float32 contaRotate)
-                | 7 -> printfn "⟳"; LWCArea.WV.RotateV(float32 -contaRotate); contaRotate <- (contaRotate+45)%360; LWCArea.WV.RotateV(float32 contaRotate)
+                | 6 -> printfn "⟲"; LWCArea.WV.RotateV(float32 -contaRotate); contaRotate <- (contaRotate+30)%360; LWCArea.WV.RotateV(float32 contaRotate)
+                | 7 -> printfn "⟳"; LWCArea.WV.RotateV(float32 -contaRotate); contaRotate <- (contaRotate-30)%360; LWCArea.WV.RotateV(float32 contaRotate)
                 | _ -> printfn "error"
                 LWCArea.Invalidate()
 
@@ -159,13 +191,14 @@ type Buttons() =
             g.FillRectangle(Brushes.DarkGray, bottoni.[i])
             g.DrawString(lettere.[i],new Font("Tahoma",float32 12.5),Brushes.Black,PointF(float32 bottoni.[i].X,0.f))
 
-let textBox = new TextBox(Top=30, Left=60, Width=8*25 + 5*7 - 60)
+//let textBox = new TextBox(Top=30, Left=60, Width=8*25 + 5*7 - 60)
+let textBox = new TextBox(Top=30, Left=60, Width=25*5+5*5 - 35)
 
 type Operazioni() =
     inherit LWCControl()
 
-    let bottoni = [| new Rectangle(0,0,25,25); new Rectangle(25+5,0,25,25) |]
-    let lettere = [| "📄";"T" |]
+    let bottoni = [| new Rectangle(0,0,25,25); new Rectangle(25+5,0,25,25); new Rectangle(25*6+5*6,0,25,25); new Rectangle(25*7+5*7,0,25,25) |]
+    let lettere = [| "📄";"T";"⟲";"⟳" |]
 
     override this.OnMouseUp(e) =
         let mutable i = 0 
@@ -190,12 +223,22 @@ type Operazioni() =
                     if selectedSticker.Rettangolo.Height <> 0 && textBox.TextLength>0 then
                         selectedSticker.Testo <- textBox.Text
                         LWCArea.Invalidate()
+                | 2 -> 
+                    printfn "⟲"
+                    if selectedSticker.Rettangolo.Height <> 0 then
+                        selectedSticker.Ruota <- (selectedSticker.Ruota - 90.f)%360.f
+                        LWCArea.Invalidate()
+                | 3 -> 
+                    printfn "⟳"
+                    if selectedSticker.Rettangolo.Height <> 0 then
+                        selectedSticker.Ruota <- (selectedSticker.Ruota + 90.f)%360.f
+                        LWCArea.Invalidate()
                 | _ -> printfn "error"
     
 
     override this.OnPaint(e) =
         let g = e.Graphics
-        for i in 0 .. (bottoni.Length - 1) do
+        for i in 0 .. bottoni.Length - 1 do
             g.FillRectangle(Brushes.DarkGray, bottoni.[i])
             g.DrawString(lettere.[i],new Font("Tahoma",float32 12.5),Brushes.Black,PointF(float32 bottoni.[i].X,0.f))
 
@@ -307,7 +350,6 @@ let lwccScrollbarX = new LWCContainer(Dock=DockStyle.Bottom, Height=20)
 
 let ButtonControl = new Buttons(Position=PointF(0.f, 0.f),ClientSize=SizeF(8.f*25.f + 5.f*7.f, 25.f))
 let StickerControl = new Operazioni(Position=PointF(0.f, 30.f),ClientSize=SizeF(8.f*25.f + 5.f*7.f, 25.f))
-
 
 //scrollbar
 let xS = new ScrollBarX(ClientSize=SizeF(float32 (f.ClientSize.Width-20), 20.f))

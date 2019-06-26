@@ -8,8 +8,11 @@ type WVMatrix () = // Libreria
   in questa costruzione c'è molto di uomo e poco di macchina, esiste perché è più semplice/utile per l'uomo  *)
   let wv = new Drawing2D.Matrix() //essendo 2D è di dimensione 3*3
   let vw = new Drawing2D.Matrix()
+  let mutable rotazione = 0.f //per sapere di quanto ha ruotato la matrice
   member this.VW with get() = vw
   member this.WV with get() = wv
+  member this.Rotazione with get() = rotazione
+
 
   member this.TranslateW (tx, ty) =
     wv.Translate(tx, ty)
@@ -30,10 +33,12 @@ type WVMatrix () = // Libreria
   member this.RotateW (a) =
     wv.Rotate(a)
     vw.Rotate(-a, Drawing2D.MatrixOrder.Append)
+    rotazione <- rotazione - a
 
   member this.RotateV (a) =
     vw.Rotate(a)
     wv.Rotate(-a, Drawing2D.MatrixOrder.Append)
+    rotazione <- rotazione + a
 
   member this.TranslateV (tx, ty) =
     vw.Translate(tx, ty)
@@ -129,6 +134,9 @@ type LWCContainer() as this =
 
   member this.LWControls with get() = controls
 
+  abstract PaintSupport : PaintEventArgs -> WVMatrix * Drawing2D.GraphicsState
+  default this.PaintSupport(e) = new WVMatrix(), e.Graphics.Save()
+
   override this.OnMouseDown (e) =
     let oc = controls |> Seq.tryFindBack(fun c -> c.HitTest(e.Location))
     match oc with
@@ -136,7 +144,7 @@ type LWCContainer() as this =
       let p = c.WV.TransformPointV(PointF(single e.X, single e.Y))
       let evt = new MouseEventArgs(e.Button, e.Clicks, int p.X, int p.Y, e.Delta)
       c.OnMouseDown(evt)
-    | None -> () 
+    | None -> ()
 
   override this.OnKeyDown (e) =
     //let evt = new KeyEventArgs(e.KeyData)
@@ -173,41 +181,22 @@ type LWCContainer() as this =
   override this.OnPaint(e) =
     let g = e.Graphics
     g.SmoothingMode <- System.Drawing.Drawing2D.SmoothingMode.AntiAlias
-    controls 
-    |> Seq.iter(fun c ->
+    let (wv, bkg1) = this.PaintSupport e
+    controls |> Seq.iter(fun c ->
       let bkg = e.Graphics.Save()
 
-      // esercizio: impostare il rettangolo in client space
       let evt = new PaintEventArgs(e.Graphics, Rectangle(c.PositionInt, c.ClientSizeInt))
-      //bug: non supporta la rotazione
+
+      let vx = wv.TransformPointV(PointF(0.f,0.f))
+      c.WV.TranslateV(vx.X,vx.Y)
+      c.WV.RotateV(wv.Rotazione)
+
       e.Graphics.Transform <- c.WV.WV
       c.OnPaint(evt)
       e.Graphics.Restore(bkg)
+
+      c.WV.RotateV(-wv.Rotazione)
+      c.WV.TranslateV(-vx.X,-vx.Y)
+      
     )
-
-// Utente Libreria
-type LWButton() =
-  inherit LWCControl()
-  
-  override this.OnPaint(e) =
-    let g = e.Graphics
-    g.FillRectangle(Brushes.Red, 0.f, 0.f, this.Width, this.Height)
-    g.DrawLine(Pens.Blue, 0.f, 0.f, 2.f*this.Width, 2.f*this.Height)
-  
-  override this.OnMouseDown(e) =
-    printfn "%A" e.Location
-
-// Test
-//let btn = new LWButton(Position=PointF(20.f, 10.f))
-//let btn2 = new LWButton(Position=PointF(180.f, 10.f))
-
-//let lwcc = new LWCContainer(Dock=DockStyle.Fill)
-//lwcc.LWControls.Add(btn)
-//lwcc.LWControls.Add(btn2)
-
-//let f = new Form(Text="Prova", TopMost=true)
-//f.Controls.Add(lwcc)
-//f.Show()
-
-// btn.Position <- PointF(150.f, 70.f)
-// lwcc.Invalidate()
+    g.Restore(bkg1)

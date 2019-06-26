@@ -139,9 +139,12 @@ type LWCContainer() as this =
     | None -> () 
 
   override this.OnKeyDown (e) =
-    controls |> Seq.iter(fun c -> c.OnKeyDown(new KeyEventArgs(e.KeyData)))
-                                                              
-                   
+    //let evt = new KeyEventArgs(e.KeyData)
+    //this.OnKeyDown(evt)
+    //controls |> Seq.iter(fun c -> c.OnKeyDown(new KeyEventArgs(e.KeyData)) )
+    this.Invalidate()
+
+
   override this.OnMouseUp (e) =
     let oc = controls |> Seq.tryFindBack(fun c -> c.HitTest(e.Location))
     match oc with
