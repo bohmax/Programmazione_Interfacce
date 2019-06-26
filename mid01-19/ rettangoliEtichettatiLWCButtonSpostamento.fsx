@@ -459,7 +459,7 @@ type ScrollBarX() =
         if seleziona && e.Button.Equals(MouseButtons.Left) && int(this.Width - 20.f) > e.Location.X then
             rettOrizzontale <- new Rectangle(e.Location.X, 0, 20, 20)
             let diff = float32 (float32 e.Location.X - lastX)
-            LWCArea.WV.TranslateW(diff,0.f)
+            LWCArea.WV.TranslateV(diff,0.f)
             lastX <- float32 e.Location.X
             this.Invalidate()
 
