@@ -3,11 +3,6 @@ open LWC
 open System.Windows.Forms
 open System.Drawing
 
-let f = new Form(Text="prova", TopMost=true)
-f.Height <- 700
-f.Width <- 700
-f.BackColor <- Color.LightGray
-
 type Sticker() =
     inherit LWCControl()
 
@@ -134,81 +129,85 @@ type Area() =
         with get() = wv
     
     override this.OnMouseDown(e) =
-        let p = wv.TransformPointV(PointF(single e.X, single e.Y))
-        let evt = new MouseEventArgs(e.Button, e.Clicks, int p.X, int p.Y, e.Delta)
-        
-        let risultatoricerca = trovaSticker listaSticker evt.Location
-        if risultatoricerca.Rettangolo.Height = 0 then //aggiungi nuovo sticker
-            abilitaTrascinamento <- true
-            posMousePosition <- Point( evt.X, evt.Y)
-        else //seleziona lo steaker cliccato
-            selectedSticker.Selezionato <- false
-            selectedSticker <- risultatoricerca
-
-            listaSticker <- List.append [selectedSticker] listaSticker //in modo da avere l'elemento selezionato in cima alla lista
-            listaSticker <- List.distinct listaSticker //elimino il duplicato dopo l'inserimento
-            let idx = this.LWControls.IndexOf(selectedSticker)
-            this.LWControls.Move(idx,this.LWControls.Count-1)
-
-            selectedSticker.Selezionato <- true
-            posMousePosition <- Point( evt.X - int selectedSticker.Position.X, evt.Y - int selectedSticker.Position.Y)
-            abilitaTrascinamento <- false
-        for i in listaSticker do
-            if i <> selectedSticker then
-                i.Selezionato <- false
-        this.Invalidate()              
-    
-    override this.OnMouseMove(e)  =
-        if e.Button.Equals(MouseButtons.Left) then
+        if not t.Enabled then
             let p = wv.TransformPointV(PointF(single e.X, single e.Y))
             let evt = new MouseEventArgs(e.Button, e.Clicks, int p.X, int p.Y, e.Delta)
-
-            if selectedSticker.Rettangolo.Height <> 0 && not abilitaTrascinamento then
-                selectedSticker.Position <- new PointF(float32(evt.X - posMousePosition.X),float32(evt.Y - posMousePosition.Y))
-                selectedSticker.Rettangolo <- new Rectangle(int selectedSticker.Position.X,int selectedSticker.Position.Y,selectedSticker.Rettangolo.Width,selectedSticker.Rettangolo.Height)
-                this.Invalidate()
-            else if abilitaTrascinamento then
-                let mutable (startx, sottrx) = evt.X, posMousePosition.X - evt.X
-                let mutable (starty, sottry) = evt.Y, posMousePosition.Y - evt.Y
-                if posMousePosition.X < evt.X then
-                    startx <- posMousePosition.X
-                    sottrx <- evt.X - posMousePosition.X
-                if posMousePosition.Y < starty then
-                    starty <- posMousePosition.Y
-                    sottry <- evt.Y - posMousePosition.Y
-
-                drawSelector <- new Rectangle(startx,starty,sottrx,sottry)
-                for i in listaSticker do
-                    if drawSelector.IntersectsWith i.Rettangolo then
-                        if not i.Selezionato then
-                            i.Selezionato <- true
-                            let idx = this.LWControls.IndexOf(i)
-                            this.LWControls.Move(idx,this.LWControls.Count-1)
-                    else if i <> selectedSticker then
-                        i.Selezionato <- false
-                if selectedSticker.Rettangolo.Height <> 0 then
-                    let idx = this.LWControls.IndexOf(selectedSticker)
-                    this.LWControls.Move(idx,this.LWControls.Count-1)
-                this.Invalidate()
-        else abilitaTrascinamento <- false
-
-    override this.OnMouseUp(e)  =  
-        let p = wv.TransformPointV(PointF(single e.X, single e.Y))
-        let evt = new MouseEventArgs(e.Button, e.Clicks, int p.X, int p.Y, e.Delta)
         
-        if abilitaTrascinamento then
-            if drawSelector.Width = 0 then //quando era selezionato lo sticker
+            let risultatoricerca = trovaSticker listaSticker evt.Location
+            if risultatoricerca.Rettangolo.Height = 0 then //aggiungi nuovo sticker
+                abilitaTrascinamento <- true
+                posMousePosition <- Point( evt.X, evt.Y)
+            else //seleziona lo steaker cliccato
                 selectedSticker.Selezionato <- false
-                let st = new Sticker(Position=PointF(float32 evt.Location.X,float32 evt.Location.Y), ClientSize=SizeF(100.f,130.f),Rettangolo = new Rectangle(evt.Location.X,evt.Location.Y,100,130))
-                listaSticker <- List.append [ st ] listaSticker
-                this.LWControls.Add(st)
-                selectedSticker <- st
+                selectedSticker <- risultatoricerca
+
+                listaSticker <- List.append [selectedSticker] listaSticker //in modo da avere l'elemento selezionato in cima alla lista
+                listaSticker <- List.distinct listaSticker //elimino il duplicato dopo l'inserimento
+                let idx = this.LWControls.IndexOf(selectedSticker)
+                this.LWControls.Move(idx,this.LWControls.Count-1)
+
                 selectedSticker.Selezionato <- true
-            else //inizio animazione Sticker selezionati
-                t.Start()
-                drawSelector <- new Rectangle(0,0,0,0)
-            this.Invalidate()
-        abilitaTrascinamento <- false
+                posMousePosition <- Point( evt.X - int selectedSticker.Position.X, evt.Y - int selectedSticker.Position.Y)
+                abilitaTrascinamento <- false
+            for i in listaSticker do
+                if i <> selectedSticker then
+                    i.Selezionato <- false
+            this.Invalidate()              
+    
+    override this.OnMouseMove(e)  =
+        if not t.Enabled then
+            if e.Button.Equals(MouseButtons.Left) then
+                let p = wv.TransformPointV(PointF(single e.X, single e.Y))
+                let evt = new MouseEventArgs(e.Button, e.Clicks, int p.X, int p.Y, e.Delta)
+
+                if selectedSticker.Rettangolo.Height <> 0 && not abilitaTrascinamento then
+                    selectedSticker.Position <- new PointF(float32(evt.X - posMousePosition.X),float32(evt.Y - posMousePosition.Y))
+                    selectedSticker.Rettangolo <- new Rectangle(int selectedSticker.Position.X,int selectedSticker.Position.Y,selectedSticker.Rettangolo.Width,selectedSticker.Rettangolo.Height)
+                    this.Invalidate()
+                else if abilitaTrascinamento then
+                    let mutable (startx, sottrx) = evt.X, posMousePosition.X - evt.X
+                    let mutable (starty, sottry) = evt.Y, posMousePosition.Y - evt.Y
+                    if posMousePosition.X < evt.X then
+                        startx <- posMousePosition.X
+                        sottrx <- evt.X - posMousePosition.X
+                    if posMousePosition.Y < starty then
+                        starty <- posMousePosition.Y
+                        sottry <- evt.Y - posMousePosition.Y
+
+                    drawSelector <- new Rectangle(startx,starty,sottrx,sottry)
+                    for i in listaSticker do
+                        if drawSelector.IntersectsWith i.Rettangolo then
+                            if not i.Selezionato then
+                                i.Selezionato <- true
+                                let idx = this.LWControls.IndexOf(i)
+                                this.LWControls.Move(idx,this.LWControls.Count-1)
+                        else if i <> selectedSticker then
+                            i.Selezionato <- false
+                    if selectedSticker.Rettangolo.Height <> 0 then
+                        let idx = this.LWControls.IndexOf(selectedSticker)
+                        this.LWControls.Move(idx,this.LWControls.Count-1)
+                    this.Invalidate()
+            else abilitaTrascinamento <- false
+
+    override this.OnMouseUp(e)  =
+        if not t.Enabled then
+            let p = wv.TransformPointV(PointF(single e.X, single e.Y))
+            let evt = new MouseEventArgs(e.Button, e.Clicks, int p.X, int p.Y, e.Delta)
+        
+            if abilitaTrascinamento then
+                if drawSelector.Width < 5 then //quando era selezionato lo sticker
+                    selectedSticker.Selezionato <- false
+                    let st = new Sticker(Position=PointF(float32 evt.Location.X,float32 evt.Location.Y), ClientSize=SizeF(100.f,130.f),Rettangolo = new Rectangle(evt.Location.X,evt.Location.Y,100,130))
+                    listaSticker <- List.append [ st ] listaSticker
+                    this.LWControls.Add(st)
+                    selectedSticker <- st
+                    selectedSticker.Selezionato <- true
+                    drawSelector <- new Rectangle(0,0,0,0)
+                else //inizio animazione Sticker selezionati
+                    drawSelector <- new Rectangle(0,0,0,0)
+                    t.Start()
+                this.Invalidate()
+            abilitaTrascinamento <- false
 
     override this.PaintSupport(e) =
         let g = e.Graphics
@@ -314,6 +313,10 @@ type Operazioni() =
             g.FillRectangle(Brushes.DarkGray, bottoni.[i])
             g.DrawString(lettere.[i],new Font("Tahoma",float32 12.5),Brushes.Black,PointF(float32 bottoni.[i].X,0.f))
 
+let f = new Form(Text="prova")
+f.Height <- 700
+f.Width <- 700
+f.BackColor <- Color.LightGray
 
 type ScrollBarX() =
     inherit LWCControl()
@@ -352,6 +355,9 @@ type ScrollBarX() =
             rettOrizzontale <- new Rectangle(int (this.Width/2.f),0,20,20)
             lastPosition <- new PointF(this.Width/2.f ,0.f)
             lastX <- lastPosition.X
+        if rettOrizzontale.X+20 > int this.ClientSize.Width then
+            rettOrizzontale <- new Rectangle(int this.ClientSize.Width - 20,0, 20,20)
+            lastX <- this.ClientSize.Width - 20.f
         this.Invalidate()
         base.OnResize e
 
@@ -389,11 +395,13 @@ type ScrollBarY() =
     override this.OnResize(e) =
         this.ClientSize <- SizeF(20.f, float32 (f.ClientSize.Height-20))
         this.Position <- PointF(0.f, 0.f)
-        if lastPosition.X = -20.f then
+        if lastPosition.X = -20.f then //per la prima resize
             rettVerticale <- new Rectangle(0, int (this.Height/2.f),20,20)
             lastPosition <- new PointF(0.f, this.Height/2.f)
             lastY <- lastPosition.Y
-        
+        if rettVerticale.Y+20 > int this.ClientSize.Height then
+            rettVerticale <- new Rectangle(0,int this.ClientSize.Height - 20, 20,20)
+            lastY <- this.ClientSize.Height - 20.f
         this.Invalidate()
         base.OnResize e
 
@@ -408,7 +416,6 @@ type Disegno() =
         this.Position <- PointF(0.f, float32 f.ClientSize.Height - 20.f)
         this.Invalidate()
         base.OnResize e
-
 
 let AreaContainer = new Area(Dock=DockStyle.Fill)
 let lwccBottoni = new LWCContainer(Dock=DockStyle.Top, Height=55)
