@@ -3,6 +3,11 @@ open LWC
 open System.Windows.Forms
 open System.Drawing
 
+let f = new Form(Text="prova", TopMost=true)
+f.Height <- 700
+f.Width <- 700
+f.BackColor <- Color.LightGray
+
 type Sticker() =
     inherit LWCControl()
 
@@ -90,6 +95,26 @@ let rec trovaSticker (l:Sticker list) (e:Point) =  //trova se stiamo cliccando i
     if not ( head.Rettangolo.Contains e) then 
         trovaSticker tail e
     else head
+
+let calcolaDiff ( el: Sticker ) (selected: Sticker ) =
+    let mutable diffX = el.Position.X - selected.Position.X
+    let mutable diffY = el.Position.Y - selected.Position.Y
+    let mutable x = 0.f
+    let mutable y = 0.f
+    if abs diffX < 35.f then 
+        x <- selected.Position.X
+    else if abs diffX < 75.f then 
+        x <- el.Position.X - 5.f * float32( sign diffX )
+    else
+        x <- el.Position.X - 10.f * float32( sign diffX )
+
+    if abs diffY < 35.f then 
+        y <- selected.Position.Y
+    else if abs diffY < 75.f then 
+        y <- el.Position.Y -  5.f * float32( sign diffY )
+    else
+        y <- el.Position.Y -  10.f * float32( sign diffY )
+    PointF(x, y)
 //-----------------------------------------------------------------------------------------
 
 let mutable listaSticker = [] //indica una lista degli sticker
@@ -98,7 +123,8 @@ let mutable posMousePosition = Point(-1,-1) //ultima posizione del mouse dell ev
 let mutable contaRotate = 0 //indica di quanto ha ruotato il mondo fino a questo momento
 let mutable abilitaTrascinamento = false //per sapere se applicare la selezione stile lasso
 let mutable drawSelector = new Rectangle(0,0,0,0) //rettangolo di selezione da disegnare
-
+let t = new Timer(Interval = 20)
+    
 type Area() =
     inherit LWCContainer()
 
@@ -153,8 +179,6 @@ type Area() =
 
                 drawSelector <- new Rectangle(startx,starty,sottrx,sottry)
                 for i in listaSticker do
-                    //printfn "%A %A" i.Selezionato (drawSelector.IntersectsWith i.Rettangolo)
-
                     if drawSelector.IntersectsWith i.Rettangolo then
                         if not i.Selezionato then
                             i.Selezionato <- true
@@ -171,16 +195,18 @@ type Area() =
     override this.OnMouseUp(e)  =  
         let p = wv.TransformPointV(PointF(single e.X, single e.Y))
         let evt = new MouseEventArgs(e.Button, e.Clicks, int p.X, int p.Y, e.Delta)
-
+        
         if abilitaTrascinamento then
-            if drawSelector.Width = 0 then
+            if drawSelector.Width = 0 then //quando era selezionato lo sticker
                 selectedSticker.Selezionato <- false
                 let st = new Sticker(Position=PointF(float32 evt.Location.X,float32 evt.Location.Y), ClientSize=SizeF(100.f,130.f),Rettangolo = new Rectangle(evt.Location.X,evt.Location.Y,100,130))
                 listaSticker <- List.append [ st ] listaSticker
                 this.LWControls.Add(st)
                 selectedSticker <- st
                 selectedSticker.Selezionato <- true
-            drawSelector <- new Rectangle(0,0,0,0)
+            else //inizio animazione Sticker selezionati
+                t.Start()
+                drawSelector <- new Rectangle(0,0,0,0)
             this.Invalidate()
         abilitaTrascinamento <- false
 
@@ -195,12 +221,7 @@ type Area() =
         wv, bkg
 
     override this.drawSelezione(e) =
-        let point = wv.TransformPointV(PointF(float32 drawSelector.X,float32 drawSelector.Y))
-        wv.RotateV(float32 -contaRotate)
-        e.Transform <- wv.WV
-        //e.DrawRectangle(Pens.Black, drawSelector)
-        e.DrawRectangle(Pens.Black, new Rectangle(int point.X,int point.Y,drawSelector.Width,drawSelector.Y))
-        wv.RotateV(float32 contaRotate)
+        e.DrawRectangle(Pens.Black, drawSelector)
 
     override this.OnResize(e) =
         base.OnResize e
@@ -292,11 +313,6 @@ type Operazioni() =
         for i in 0 .. bottoni.Length - 1 do
             g.FillRectangle(Brushes.DarkGray, bottoni.[i])
             g.DrawString(lettere.[i],new Font("Tahoma",float32 12.5),Brushes.Black,PointF(float32 bottoni.[i].X,0.f))
-
-let f = new Form(Text="prova", TopMost=true)
-f.Height <- 700
-f.Width <- 700
-f.BackColor <- Color.LightGray
 
 
 type ScrollBarX() =
@@ -423,4 +439,23 @@ f.Controls.Add(lwccBottoni)
 f.Controls.Add(AreaContainer)
 f.Controls.Add(lwccScrollbarX)
 f.Controls.Add(lwccScrollbarY)
+
 f.Show()
+
+f.FormClosing.Add(fun _ ->
+    t.Stop()
+)
+
+t.Tick.Add( fun e ->
+    let mutable numselezionati = 0
+    for i in listaSticker do
+        if i.Selezionato && i <> selectedSticker then
+            let pos = calcolaDiff i selectedSticker 
+            i.Position <- PointF(pos.X, pos.Y)
+            if pos.X = selectedSticker.Position.X && pos.Y = selectedSticker.Position.Y then
+                i.Selezionato <- false
+            else numselezionati <- numselezionati + 1
+    if numselezionati = 0 then 
+        t.Stop()
+    LWCArea.Invalidate()
+)

@@ -198,16 +198,18 @@ type LWCContainer() as this =
       let evt = new PaintEventArgs(e.Graphics, Rectangle(c.PositionInt, c.ClientSizeInt))
 
       let vx = wv.TransformPointV(PointF(0.f,0.f))
-      c.WV.ScaleV(wv.Scala.X,wv.Scala.X)
+      
       c.WV.TranslateV(vx.X,vx.Y)
+      c.WV.ScaleV(wv.Scala.X,wv.Scala.X)
       c.WV.RotateV(wv.Rotazione)
 
       e.Graphics.Transform <- c.WV.WV
       c.OnPaint(evt)
 
       c.WV.RotateV(-wv.Rotazione)
-      c.WV.TranslateV(-vx.X,-vx.Y)
       c.WV.ScaleV(wv.ScalaContrario.X,wv.ScalaContrario.Y)
+      c.WV.TranslateV(-vx.X,-vx.Y)
+      
       e.Graphics.Restore(bkg)
     )
 
