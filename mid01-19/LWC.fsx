@@ -180,6 +180,7 @@ type LWCContainer() as this =
       // esercizio: impostare il rettangolo in client space
       let evt = new PaintEventArgs(e.Graphics, Rectangle(c.PositionInt, c.ClientSizeInt))
       //bug: non supporta la rotazione
+      e.Graphics.SetClip(new RectangleF(c.Position, c.ClientSize))
       e.Graphics.Transform <- c.WV.WV
       c.OnPaint(evt)
       e.Graphics.Restore(bkg)

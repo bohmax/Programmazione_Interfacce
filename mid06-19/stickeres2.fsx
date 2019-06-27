@@ -118,11 +118,18 @@ type Area() =
         else //seleziona lo steaker cliccato
             selectedSticker.Selezionato <- false
             selectedSticker <- risultatoricerca
+
+            listaSticker <- List.append [selectedSticker] listaSticker //in modo da avere l'elemento selezionato in cima alla lista
+            listaSticker <- List.distinct listaSticker //elimino il duplicato dopo l'inserimento
             let idx = this.LWControls.IndexOf(selectedSticker)
             this.LWControls.Move(idx,this.LWControls.Count-1)
+
             selectedSticker.Selezionato <- true
             posMousePosition <- Point( evt.X - int selectedSticker.Position.X, evt.Y - int selectedSticker.Position.Y)
             abilitaTrascinamento <- false
+        for i in listaSticker do
+            if i <> selectedSticker then
+                i.Selezionato <- false
         this.Invalidate()              
     
     override this.OnMouseMove(e)  =
@@ -135,13 +142,29 @@ type Area() =
                 selectedSticker.Rettangolo <- new Rectangle(int selectedSticker.Position.X,int selectedSticker.Position.Y,selectedSticker.Rettangolo.Width,selectedSticker.Rettangolo.Height)
                 this.Invalidate()
             else if abilitaTrascinamento then
-                drawSelector <- new Rectangle(posMousePosition.X,posMousePosition.Y,evt.X-posMousePosition.X,evt.Y - posMousePosition.Y)//migliorare la selezione nel caso di ampiezza negativa
+                let mutable (startx, sottrx) = evt.X, posMousePosition.X - evt.X
+                let mutable (starty, sottry) = evt.Y, posMousePosition.Y - evt.Y
+                if posMousePosition.X < evt.X then
+                    startx <- posMousePosition.X
+                    sottrx <- evt.X - posMousePosition.X
+                if posMousePosition.Y < starty then
+                    starty <- posMousePosition.Y
+                    sottry <- evt.Y - posMousePosition.Y
+
+                drawSelector <- new Rectangle(startx,starty,sottrx,sottry)
                 for i in listaSticker do
-                    printfn "%A %A" i.Selezionato (drawSelector.IntersectsWith i.Rettangolo)
-                    if not i.Selezionato && drawSelector.IntersectsWith i.Rettangolo then
-                        i.Selezionato <- true
-                        let idx = this.LWControls.IndexOf(i)
-                        this.LWControls.Move(idx,this.LWControls.Count-1)
+                    //printfn "%A %A" i.Selezionato (drawSelector.IntersectsWith i.Rettangolo)
+
+                    if drawSelector.IntersectsWith i.Rettangolo then
+                        if not i.Selezionato then
+                            i.Selezionato <- true
+                            let idx = this.LWControls.IndexOf(i)
+                            this.LWControls.Move(idx,this.LWControls.Count-1)
+                    else if i <> selectedSticker then
+                        i.Selezionato <- false
+                if selectedSticker.Rettangolo.Height <> 0 then
+                    let idx = this.LWControls.IndexOf(selectedSticker)
+                    this.LWControls.Move(idx,this.LWControls.Count-1)
                 this.Invalidate()
         else abilitaTrascinamento <- false
 
@@ -169,13 +192,15 @@ type Area() =
 
         g.Transform <- wv.WV
 
-        g.DrawRectangle(Pens.Black, drawSelector)
-
         wv, bkg
 
     override this.drawSelezione(e) =
-        printfn "%A" drawSelector
-        e.DrawRectangle(Pens.Black, drawSelector)
+        let point = wv.TransformPointV(PointF(float32 drawSelector.X,float32 drawSelector.Y))
+        wv.RotateV(float32 -contaRotate)
+        e.Transform <- wv.WV
+        //e.DrawRectangle(Pens.Black, drawSelector)
+        e.DrawRectangle(Pens.Black, new Rectangle(int point.X,int point.Y,drawSelector.Width,drawSelector.Y))
+        wv.RotateV(float32 contaRotate)
 
     override this.OnResize(e) =
         base.OnResize e
@@ -205,7 +230,7 @@ type Buttons() =
                 | 2 -> printfn "↑"; LWCArea.WV.TranslateV(0.f, sposta)
                 | 3 -> printfn "↓"; LWCArea.WV.TranslateV(0.f, -sposta)
                 | 4 -> printfn "+"; LWCArea.WV.ScaleV(1.f/float32 1.1,1.f/float32 1.1)
-                | 5 -> printfn "-"; LWCArea.WV.ScaleV(1.f*float32 1.1,1.f*float32 1.1)
+                | 5 -> printfn "-"; LWCArea.WV.ScaleV(float32 1.1,float32 1.1)
                 | 6 -> printfn "⟲"; LWCArea.WV.RotateV(float32 -contaRotate); contaRotate <- (contaRotate+30)%360; LWCArea.WV.RotateV(float32 contaRotate)
                 | 7 -> printfn "⟳"; LWCArea.WV.RotateV(float32 -contaRotate); contaRotate <- (contaRotate-30)%360; LWCArea.WV.RotateV(float32 contaRotate)
                 | _ -> printfn "error"

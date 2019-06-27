@@ -9,10 +9,13 @@ type WVMatrix () = // Libreria
   let wv = new Drawing2D.Matrix() //essendo 2D è di dimensione 3*3
   let vw = new Drawing2D.Matrix()
   let mutable rotazione = 0.f //per sapere di quanto ha ruotato la matrice
+  let mutable scala = PointF(1.f,1.f) //per sapere di quanto ridimensionare la matrice
+  let mutable scalacontrario = PointF(1.f,1.f) //per sapere di quanto ridimensionare la matrice
   member this.VW with get() = vw
   member this.WV with get() = wv
   member this.Rotazione with get() = rotazione
-
+  member this.Scala with get() = scala
+  member this.ScalaContrario with get() = scalacontrario
 
   member this.TranslateW (tx, ty) =
     wv.Translate(tx, ty)
@@ -29,6 +32,8 @@ type WVMatrix () = // Libreria
   member this.ScaleW (sx, sy) =
     wv.Scale(sx, sy) //wv.Scale(1.f, -1.f), scalare di 1.1 = scalare del 10%, solitamente sx=sy altrimenti verrebbe zommato assumendo coordinate ellissi invece che cerchio
     vw.Scale(1.f /sx, 1.f/ sy, Drawing2D.MatrixOrder.Append) //vw.Scale(1.f, -1.f, Drawing2D.MatrixOrder.Append)
+    scala <- PointF(scala.X*sx, scala.Y*sy)
+    scalacontrario <- PointF(scalacontrario.X/sx, scalacontrario.Y/sy)
 
   member this.RotateW (a) =
     wv.Rotate(a)
@@ -47,6 +52,8 @@ type WVMatrix () = // Libreria
   member this.ScaleV (sx, sy) =
     vw.Scale(sx, sy)
     wv.Scale(1.f /sx, 1.f/ sy, Drawing2D.MatrixOrder.Append)
+    scala <- PointF(scala.X*sx, scala.Y*sy)
+    scalacontrario <- PointF(scalacontrario.X/sx, scalacontrario.Y/sy)
   
   member this.TransformPointV (p:PointF) = //p=coppia di punti
     let a = [| p |] //[]=lista, [| |]=array, in questo caso è un array con un solo elemento
@@ -191,16 +198,18 @@ type LWCContainer() as this =
       let evt = new PaintEventArgs(e.Graphics, Rectangle(c.PositionInt, c.ClientSizeInt))
 
       let vx = wv.TransformPointV(PointF(0.f,0.f))
+      c.WV.ScaleV(wv.Scala.X,wv.Scala.X)
       c.WV.TranslateV(vx.X,vx.Y)
       c.WV.RotateV(wv.Rotazione)
 
       e.Graphics.Transform <- c.WV.WV
       c.OnPaint(evt)
-      e.Graphics.Restore(bkg)
 
       c.WV.RotateV(-wv.Rotazione)
       c.WV.TranslateV(-vx.X,-vx.Y)
-      
+      c.WV.ScaleV(wv.ScalaContrario.X,wv.ScalaContrario.Y)
+      e.Graphics.Restore(bkg)
     )
+
     this.drawSelezione g
     g.Restore(bkg1)
