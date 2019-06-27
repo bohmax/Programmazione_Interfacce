@@ -83,24 +83,21 @@ type Sticker() =
             this.WV.TranslateW(-this.Width/2.f,-this.Height/2.f)
  
 //------------------------------------funzioni di utilita----------------------------------
-let checkPickCorrelationRett (rett:Rectangle) (p:Point) = //pick correlation di un punto su un rettangolo
-    if rett.Contains p then 
-        true
-    else false
-
 let rec trovaSticker (l:Sticker list) (e:Point) =  //trova se stiamo cliccando in uno degli archi della lista
     match l with
     | [] -> new Sticker()
     | head :: tail -> 
-    if not ( checkPickCorrelationRett head.Rettangolo e) then 
+    if not ( head.Rettangolo.Contains e) then 
         trovaSticker tail e
     else head
 //-----------------------------------------------------------------------------------------
 
 let mutable listaSticker = [] //indica una lista degli sticker
 let mutable selectedSticker = new Sticker()
-let mutable lastMousePosition = Point(-1,-1)
+let mutable posMousePosition = Point(-1,-1) //ultima posizione del mouse dell evento onmousedown
 let mutable contaRotate = 0 //indica di quanto ha ruotato il mondo fino a questo momento
+let mutable abilitaTrascinamento = false //per sapere se applicare la selezione stile lasso
+let mutable drawSelector = new Rectangle(0,0,0,0) //rettangolo di selezione da disegnare
 
 type Area() =
     inherit LWCContainer()
@@ -113,33 +110,56 @@ type Area() =
     override this.OnMouseDown(e) =
         let p = wv.TransformPointV(PointF(single e.X, single e.Y))
         let evt = new MouseEventArgs(e.Button, e.Clicks, int p.X, int p.Y, e.Delta)
+        
         let risultatoricerca = trovaSticker listaSticker evt.Location
         if risultatoricerca.Rettangolo.Height = 0 then //aggiungi nuovo sticker
-            selectedSticker.Selezionato <- false
-            let st = new Sticker(Position=PointF(float32 evt.Location.X,float32 evt.Location.Y), ClientSize=SizeF(100.f,130.f),Rettangolo = new Rectangle(evt.Location.X,evt.Location.Y,100,130))
-            listaSticker <- List.append [ st ] listaSticker
-            this.LWControls.Add(st)
-            selectedSticker <- st
-            selectedSticker.Selezionato <- true
+            abilitaTrascinamento <- true
+            posMousePosition <- Point( evt.X, evt.Y)
         else //seleziona lo steaker cliccato
             selectedSticker.Selezionato <- false
             selectedSticker <- risultatoricerca
-            //listaSticker <- List.append [selectedSticker] listaSticker //in modo da avere l'elemento selezionato in cima alla lista
-            //listaSticker <- List.distinct listaSticker //elimino il duplicato dopo l'inserimento
             let idx = this.LWControls.IndexOf(selectedSticker)
             this.LWControls.Move(idx,this.LWControls.Count-1)
             selectedSticker.Selezionato <- true
-        lastMousePosition <- Point( evt.X - int selectedSticker.Position.X, evt.Y - int selectedSticker.Position.Y)
-        this.Invalidate()                
+            posMousePosition <- Point( evt.X - int selectedSticker.Position.X, evt.Y - int selectedSticker.Position.Y)
+            abilitaTrascinamento <- false
+        this.Invalidate()              
     
-    override this.OnMouseMove(e)  =  
-        if selectedSticker.Rettangolo.Height <> 0 && e.Button.Equals(MouseButtons.Left) then
+    override this.OnMouseMove(e)  =
+        if e.Button.Equals(MouseButtons.Left) then
             let p = wv.TransformPointV(PointF(single e.X, single e.Y))
             let evt = new MouseEventArgs(e.Button, e.Clicks, int p.X, int p.Y, e.Delta)
 
-            selectedSticker.Position <- new PointF(float32(evt.X - lastMousePosition.X),float32(evt.Y - lastMousePosition.Y))
-            selectedSticker.Rettangolo <- new Rectangle(int selectedSticker.Position.X,int selectedSticker.Position.Y,selectedSticker.Rettangolo.Width,selectedSticker.Rettangolo.Height)
+            if selectedSticker.Rettangolo.Height <> 0 && not abilitaTrascinamento then
+                selectedSticker.Position <- new PointF(float32(evt.X - posMousePosition.X),float32(evt.Y - posMousePosition.Y))
+                selectedSticker.Rettangolo <- new Rectangle(int selectedSticker.Position.X,int selectedSticker.Position.Y,selectedSticker.Rettangolo.Width,selectedSticker.Rettangolo.Height)
+                this.Invalidate()
+            else if abilitaTrascinamento then
+                drawSelector <- new Rectangle(posMousePosition.X,posMousePosition.Y,evt.X-posMousePosition.X,evt.Y - posMousePosition.Y)//migliorare la selezione nel caso di ampiezza negativa
+                for i in listaSticker do
+                    printfn "%A %A" i.Selezionato (drawSelector.IntersectsWith i.Rettangolo)
+                    if not i.Selezionato && drawSelector.IntersectsWith i.Rettangolo then
+                        i.Selezionato <- true
+                        let idx = this.LWControls.IndexOf(i)
+                        this.LWControls.Move(idx,this.LWControls.Count-1)
+                this.Invalidate()
+        else abilitaTrascinamento <- false
+
+    override this.OnMouseUp(e)  =  
+        let p = wv.TransformPointV(PointF(single e.X, single e.Y))
+        let evt = new MouseEventArgs(e.Button, e.Clicks, int p.X, int p.Y, e.Delta)
+
+        if abilitaTrascinamento then
+            if drawSelector.Width = 0 then
+                selectedSticker.Selezionato <- false
+                let st = new Sticker(Position=PointF(float32 evt.Location.X,float32 evt.Location.Y), ClientSize=SizeF(100.f,130.f),Rettangolo = new Rectangle(evt.Location.X,evt.Location.Y,100,130))
+                listaSticker <- List.append [ st ] listaSticker
+                this.LWControls.Add(st)
+                selectedSticker <- st
+                selectedSticker.Selezionato <- true
+            drawSelector <- new Rectangle(0,0,0,0)
             this.Invalidate()
+        abilitaTrascinamento <- false
 
     override this.PaintSupport(e) =
         let g = e.Graphics
@@ -149,7 +169,13 @@ type Area() =
 
         g.Transform <- wv.WV
 
+        g.DrawRectangle(Pens.Black, drawSelector)
+
         wv, bkg
+
+    override this.drawSelezione(e) =
+        printfn "%A" drawSelector
+        e.DrawRectangle(Pens.Black, drawSelector)
 
     override this.OnResize(e) =
         base.OnResize e
@@ -256,7 +282,7 @@ type ScrollBarX() =
     let mutable lastX = 0.f
 
     override this.OnMouseDown(e) =
-        if checkPickCorrelationRett rettOrizzontale e.Location then
+        if rettOrizzontale.Contains e.Location then
             seleziona <- true
             lastPosition <- PointF(float32 e.X - float32 rettOrizzontale.X, 0.f)
 
@@ -296,7 +322,7 @@ type ScrollBarY() =
     let mutable lastY = 0.f
 
     override this.OnMouseDown(e) =
-        if checkPickCorrelationRett rettVerticale e.Location then
+        if rettVerticale.Contains e.Location then
             seleziona <- true
             lastPosition <- PointF(0.f, float32 e.Y - float32 rettVerticale.Y)
 

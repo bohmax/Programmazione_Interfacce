@@ -137,6 +137,9 @@ type LWCContainer() as this =
   abstract PaintSupport : PaintEventArgs -> WVMatrix * Drawing2D.GraphicsState
   default this.PaintSupport(e) = new WVMatrix(), e.Graphics.Save()
 
+  abstract drawSelezione : Graphics -> unit
+  default this.drawSelezione(e) = ()
+
   override this.OnMouseDown (e) =
     let oc = controls |> Seq.tryFindBack(fun c -> c.HitTest(e.Location))
     match oc with
@@ -199,4 +202,5 @@ type LWCContainer() as this =
       c.WV.TranslateV(-vx.X,-vx.Y)
       
     )
+    this.drawSelezione g
     g.Restore(bkg1)
